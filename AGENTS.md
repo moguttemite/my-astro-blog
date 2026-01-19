@@ -3,7 +3,7 @@
 This file provides structured guidance for AI coding agents working on the **my-astro-blog** repository.
 Modifying the AGENTS.md file is strictly prohibited.
 
-## 📌 Project Overview
+## Project Overview
 
 - **Name**: my-astro-blog  
 - **Framework**: Astro (Static Site Generator)  
@@ -82,4 +82,5 @@ my-astro-blog/
 - 网站使用pnpm来管理项目，你必须也使用pnpm来管理这个web项目
 - 不允许随意生成 .md 文档
 - When you receive an instruction, you must fully understand it first, then perform task planning by breaking the instruction into subtasks, and complete them step by step.
-
+- 实现的页面必须符合响应式
+- 实现的页面必须符合浏览器dark模式

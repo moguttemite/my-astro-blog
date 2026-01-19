@@ -1,92 +1,148 @@
 ---
 import { SITE_TITLE } from '../consts';
 
+// 外部创作平台数据
 const platforms = [
   {
     name: 'X',
-    href: 'https://x.com/your_id',
-    svg: `
-      <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
-        <path
-          fill="currentColor"
-          d="M18.244 2H21l-6.518 7.455L22 22h-6.828l-5.35-6.985L3.95 22H1l7.001-8.01L2 2h6.828l4.843 6.34L18.244 2z"
-        />
-      </svg>
-    `,
+    href: 'https://x.com/mogutte_mite',
+    svg: `<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>X</title><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg>`,
   },
   {
     name: 'Qiita',
-    href: 'https://qiita.com/your_id',
-    svg: `
-      <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
-        <path
-          fill="currentColor"
-          d="M12 2C6.477 2 2 6.485 2 12s4.477 10 10 10 10-4.485 10-10S17.523 2 12 2zm1.2 15.5h-2.4v-11h2.4v11z"
-        />
-      </svg>
-    `,
+    href: 'https://qiita.com/moguttero-oui',
+    svg: `<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Qiita</title><path fill="currentColor" d="M12 0C5.3726 0 0 5.3726 0 12s5.3726 12 12 12c3.3984 0 6.4665-1.413 8.6498-3.6832-.383-.0574-.7746-.2062-1.1466-.4542-.7145-.4763-1.3486-.9263-1.6817-1.674-1.2945 1.3807-3.0532 1.835-5.1822 2.0503-4.311.4359-8.0456-1.4893-8.4979-6.2996-.1922-2.045.2628-3.989 1.1804-5.582l-.5342-2.1009c-.0862-.3652.2498-.7126.6057-.6262l1.8456.448c1.0974-.9012 2.4249-1.49 3.8892-1.638 1.2526-.1267 2.467.0834 3.571.5624l1.7348-1.0494c.3265-.1974.7399.0257.7711.4164l.1 2.4747v.0002c1.334 1.4084 2.2424 3.3319 2.4478 5.516.116 1.2339-.012 2.1776-.339 3.078-.1531.4215-.1992.7778.0776 1.1305.2674.3408.6915 1.0026 1.1644.8917.7107-.1666 1.4718-.1223 1.9422.1715C23.4925 15.9525 24 14.0358 24 12c0-6.6274-5.3726-12-12-12Zm-.0727 5.727a5.2731 5.2731 0 0 0-.6146.0273c-2.2084.2233-3.9572 1.8135-4.4937 3.8484l-1.3176-.1996-.014.2589 1.2972.1407c-.0352.1497-.0643.2384-.086.3923l-1.1319.0902.0103.2025 1.1032-.088c-.0194.1713-.031.2814-.0332.4565l-1.0078.412.0495.2499.9598-.4492c.002.1339.008.2053.0207.3407.2667 2.8371 2.6364 3.3981 5.4677 3.1118 2.8312-.2863 5.0517-1.3114 4.785-4.1486-.013-.1361-.0324-.2068-.0553-.3392l1.0397.2257.0242-.229-1.0906-.207c-.0342-.1687-.0765-.271-.1264-.4327l1.1208-.1374-.0158-.2019-1.1499.1409a5.1093 5.1093 0 0 0-.1665-.4259l1.2665-.4042-.0397-.2536-1.3471.4667c-.819-1.7168-2.5002-2.8224-4.4546-2.8482Z"/></svg>`,
   },
-  {
-    name: '微信公众号',
-    href: 'https://mp.weixin.qq.com/your_id',
-    svg: `
-      <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
-        <circle cx="12" cy="12" r="10" fill="currentColor" />
-      </svg>
-    `,
-  },
+//   {
+//     name: '微信公众号',
+//     href: 'https://mp.weixin.qq.com/your_id',
+//     svg: `<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>WeChat</title><path fill="currentColor" d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg>`,
+//   },
 ];
 
+// 主平台（第一个平台，窄屏时单独显示）
+const primaryPlatform = platforms[0];
+// 其他平台（窄屏时收拢到下拉菜单）
+const otherPlatforms = platforms.slice(1);
+// 下拉触发器 SVG（三个点图标）
+const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>`;
 ---
 
 <header>
-	<nav>
+	<div class="header-container w-full flex items-center">
 		<!-- Left: Site Identity -->
-		<h2><a href="/">{SITE_TITLE}</a></h2>
+		<div class="site-identity flex-shrink-0">
+			<h2><a href="/">{SITE_TITLE}</a></h2>
+		</div>
+
+		<!-- Center: Empty nav (semantic only) -->
+		<nav class="flex-1" aria-label="Main navigation"></nav>
 
 		<!-- Right: External Platforms -->
-		<div class="social-links relative hidden md:flex items-center">
-			<button class="
-					platform-trigger
-					inline-flex items-center gap-1
-					px-2 py-1
-					text-sm text-black
-					hover:opacity-80
-				" 
-				aria-haspopup="true">
-				X <span class="caret text-xs">▾</span>
-			</button>
-
-			<ul 
-				class=
-					"
-						platform-dropdown
-						absolute right-0 top-full mt-2
-						min-w-[10rem]
-						rounded-lg
-						rounded-lg
-						bg-white
-						shadow-lg
-						py-1
-					">
+		<div class="platforms-container flex-shrink-0 flex items-center gap-2">
+			<!-- 宽屏：所有平台并列展示，每一项直接跳转 -->
+			<div class="platforms-wide hidden md:flex items-center gap-3">
 				{platforms.map((p) => (
-				<li>
-					<a href={p.href} target="_blank" rel="noopener noreferrer" 
-						class="
-							flex items-center gap-2
-							px-3 py-2
-							text-sm text-black
-							hover:bg-black/5
-						">
-					<span class="platform-icon inline-flex text-black" set:html={p.svg}></span>
-					<span class="platform-name">>{p.name}</span>
+					<a
+						href={p.href}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="platform-link inline-flex items-center gap-1.5 px-2 py-1.5 text-sm transition-colors"
+						aria-label={p.name}
+					>
+						<span class="inline-flex items-center justify-center w-5 h-5" set:html={p.svg}></span>
 					</a>
-				</li>
 				))}
-			</ul>
+			</div>
+
+			<!-- 窄屏：主平台直接跳转 + 下拉触发器 -->
+			<div class="platforms-narrow md:hidden flex items-center gap-2 relative">
+				<!-- 主平台直接跳转 -->
+				<a
+					href={primaryPlatform.href}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="platform-link-primary inline-flex items-center gap-1.5 px-2 py-1.5 text-sm transition-colors"
+					aria-label={primaryPlatform.name}
+				>
+					<span class="inline-flex items-center justify-center w-5 h-5" set:html={primaryPlatform.svg}></span>
+				</a>
+
+				<!-- 下拉触发器（仅图标，无文字） -->
+				{otherPlatforms.length > 0 && (
+					<>
+						<button
+							id="platform-dropdown-trigger"
+							class="platform-dropdown-trigger inline-flex items-center justify-center w-8 h-8 transition-colors"
+							aria-haspopup="true"
+							aria-expanded="false"
+							type="button"
+							aria-label="更多平台"
+						>
+							<span class="inline-flex items-center justify-center w-5 h-5" set:html={dropdownTriggerSvg}></span>
+						</button>
+
+						<!-- 下拉菜单（仅包含其他平台，不包含主平台） -->
+						<ul
+							id="platform-dropdown"
+							class="platform-dropdown absolute right-0 top-full mt-1.5 min-w-[11rem] rounded-lg py-1 hidden z-50"
+							role="menu"
+						>
+							{otherPlatforms.map((p) => (
+								<li role="none">
+									<a
+										href={p.href}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="platform-item flex items-center gap-2.5 px-3 py-2 text-sm transition-colors"
+										role="menuitem"
+									>
+										<span class="inline-flex items-center justify-center w-5 h-5 flex-shrink-0" set:html={p.svg}></span>
+										<span class="platform-name">{p.name}</span>
+									</a>
+								</li>
+							))}
+						</ul>
+					</>
+				)}
+			</div>
 		</div>
-	</nav>
+	</div>
 </header>
+
+<script>
+	// 下拉菜单交互逻辑（客户端脚本，仅窄屏）
+	const trigger = document.getElementById('platform-dropdown-trigger');
+	const dropdown = document.getElementById('platform-dropdown');
+
+	if (trigger && dropdown) {
+		// 点击触发器切换下拉菜单
+		trigger.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
+			trigger.setAttribute('aria-expanded', String(!isExpanded));
+			dropdown.classList.toggle('hidden');
+		});
+
+		// 点击外部关闭下拉菜单
+		document.addEventListener('click', (e) => {
+			const target = e.target;
+			if (target instanceof Node && !trigger.contains(target) && !dropdown.contains(target)) {
+				trigger.setAttribute('aria-expanded', 'false');
+				dropdown.classList.add('hidden');
+			}
+		});
+
+		// ESC 键关闭下拉菜单
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				trigger.setAttribute('aria-expanded', 'false');
+				dropdown.classList.add('hidden');
+			}
+		});
+	}
+</script>
+
 <style>
 	header {
 		min-height: 3.5rem;
@@ -94,43 +150,227 @@ const platforms = [
 		padding: 0 1em;
 		background: white;
 		box-shadow: 0 2px 8px rgba(var(--black), 5%);
-
 		display: flex;
 		align-items: center;
 	}
+
+	@media (prefers-color-scheme: dark) {
+		header {
+			background: rgb(var(--black));
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+		}
+	}
+
 	h2 {
 		margin: 0;
 		font-size: 1em;
 	}
 
-	h2 a,
-	h2 a.active {
+	h2 a {
 		text-decoration: none;
+		color: rgb(var(--black));
+		padding: 1em 0.5em;
+		display: inline-block;
 	}
-	nav {
-		height: 100%;
+
+	@media (prefers-color-scheme: dark) {
+		h2 a {
+			color: rgb(var(--gray-light));
+		}
+	}
+
+	.header-container {
 		width: 100%;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
 	}
-	nav a {
-		padding: 1em 0.5em;
-		color: var(--black);
-		border-bottom: 4px solid transparent;
+
+	/* Platform Links (Wide Screen) */
+	.platform-link {
+		color: rgb(var(--gray-dark));
 		text-decoration: none;
+		border-radius: 6px;
 	}
-	nav a.active {
-		text-decoration: none;
-		border-bottom-color: var(--accent);
+
+	.platform-link:hover {
+		background: rgb(var(--gray-light));
+		color: rgb(var(--black));
 	}
-	.social-links,
-	.social-links a {
-		display: flex;
+
+	.platform-link svg {
+		color: rgb(var(--gray));
+		transition: color 0.2s ease;
 	}
-	@media (max-width: 720px) {
-		.social-links {
-			display: none;
+
+	.platform-link:hover svg {
+		color: rgb(var(--black));
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.platform-link {
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-link:hover {
+			background: rgba(255, 255, 255, 0.1);
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-link svg {
+			color: rgb(var(--gray));
+		}
+
+		.platform-link:hover svg {
+			color: rgb(var(--gray-light));
 		}
 	}
+
+	/* Platform Link Primary (Narrow Screen) */
+	.platform-link-primary {
+		color: rgb(var(--gray-dark));
+		text-decoration: none;
+		border-radius: 6px;
+	}
+
+	.platform-link-primary:hover {
+		background: rgb(var(--gray-light));
+		color: rgb(var(--black));
+	}
+
+	.platform-link-primary svg {
+		color: rgb(var(--gray));
+		transition: color 0.2s ease;
+	}
+
+	.platform-link-primary:hover svg {
+		color: rgb(var(--black));
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.platform-link-primary {
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-link-primary:hover {
+			background: rgba(255, 255, 255, 0.1);
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-link-primary svg {
+			color: rgb(var(--gray));
+		}
+
+		.platform-link-primary:hover svg {
+			color: rgb(var(--gray-light));
+		}
+	}
+
+	/* Dropdown Trigger (Narrow Screen Only) */
+	.platform-dropdown-trigger {
+		color: rgb(var(--gray-dark));
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.platform-dropdown-trigger:hover {
+		background: rgb(var(--gray-light));
+		color: rgb(var(--black));
+	}
+
+	.platform-dropdown-trigger[aria-expanded="true"] {
+		background: rgb(var(--gray-light));
+	}
+
+	.platform-dropdown-trigger svg {
+		color: rgb(var(--gray));
+		transition: color 0.2s ease;
+	}
+
+	.platform-dropdown-trigger:hover svg {
+		color: rgb(var(--black));
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.platform-dropdown-trigger {
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-dropdown-trigger:hover {
+			background: rgba(255, 255, 255, 0.1);
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-dropdown-trigger[aria-expanded="true"] {
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.platform-dropdown-trigger svg {
+			color: rgb(var(--gray));
+		}
+
+		.platform-dropdown-trigger:hover svg {
+			color: rgb(var(--gray-light));
+		}
+	}
+
+	/* Platform Dropdown Menu */
+	.platform-dropdown {
+		border: 1px solid rgb(var(--gray-light));
+		box-shadow: 0 2px 8px rgba(var(--black), 8%), 0 4px 16px rgba(var(--black), 4%);
+		background: white;
+	}
+
+	.platform-item {
+		color: rgb(var(--gray-dark));
+		text-decoration: none;
+		border-radius: 4px;
+		margin: 0.125rem 0.5rem;
+	}
+
+	.platform-item:hover {
+		background: rgb(var(--gray-light));
+		color: rgb(var(--black));
+	}
+
+	.platform-item .platform-name {
+		color: inherit;
+	}
+
+	.platform-item svg {
+		color: rgb(var(--gray));
+		transition: color 0.2s ease;
+	}
+
+	.platform-item:hover svg {
+		color: rgb(var(--black));
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.platform-dropdown {
+			background: rgb(var(--black));
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
+		}
+
+		.platform-item {
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-item:hover {
+			background: rgba(255, 255, 255, 0.1);
+			color: rgb(var(--gray-light));
+		}
+
+		.platform-item svg {
+			color: rgb(var(--gray));
+		}
+
+		.platform-item:hover svg {
+			color: rgb(var(--gray-light));
+		}
+	}
+
 </style>
