@@ -1,118 +1,43 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
-import Header from '../components/Header.astro';
+import PageLayout from '../layouts/PageLayout.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
-// Mock data: 10 items, time descending order
-const now = new Date();
-const feedItems = [
-	{
-		source: 'X',
-		timeAgo: '5 分钟前',
-		title: 'Just finished refactoring the header component. The separation of platform links and dropdown trigger is now crystal clear.',
-		excerpt: null,
-		image: null,
-	},
-	{
-		source: 'Blog',
-		timeAgo: '2 小时前',
-		title: 'Astro 组件设计：如何构建一个不干扰阅读的 Header',
-		excerpt: '在设计个人博客的 Header 时，核心原则是克制与稳定。本文探讨了如何通过清晰的职责划分和响应式设计，创建一个既实用又不干扰阅读体验的导航组件。',
-		image: '/mock/blog-header-design.jpg',
-	},
-	{
-		source: 'X',
-		timeAgo: '3 小时前',
-		title: 'Working on dark mode support. The key is using CSS variables and prefers-color-scheme media queries.',
-		excerpt: null,
-		image: null,
-	},
-	{
-		source: 'Blog',
-		timeAgo: '1 天前',
-		title: 'TypeScript 类型系统在实际项目中的应用',
-		excerpt: '从基础类型到高级类型，从泛型到条件类型，本文记录了我在实际项目中如何利用 TypeScript 的类型系统来提高代码质量和开发效率。',
-		image: '/mock/typescript-types.jpg',
-	},
-	{
-		source: 'X',
-		timeAgo: '1 天前',
-		title: 'The beauty of static site generators: fast, secure, and simple.',
-		excerpt: null,
-		image: null,
-	},
-	{
-		source: 'Other',
-		timeAgo: '2 天前',
-		title: 'GitHub Actions 自动化部署实践',
-		excerpt: '记录了一次完整的 CI/CD 流程搭建过程，从代码提交到自动构建再到部署，全自动化流程让开发效率提升了不少。',
-		image: null,
-	},
-	{
-		source: 'Blog',
-		timeAgo: '3 天前',
-		title: '响应式设计：移动优先的思考方式',
-		excerpt: '移动优先不仅仅是技术实现，更是一种设计思维。本文分享了在构建响应式网站时的一些实践经验和思考。',
-		image: '/mock/responsive-design.jpg',
-	},
-	{
-		source: 'X',
-		timeAgo: '4 天前',
-		title: 'Sometimes the best code is the code you delete.',
-		excerpt: null,
-		image: null,
-	},
-	{
-		source: 'Blog',
-		timeAgo: '5 天前',
-		title: 'CSS 变量在主题切换中的应用',
-		excerpt: '使用 CSS 自定义属性实现主题切换是一个优雅的解决方案。本文介绍了如何利用 CSS 变量来构建支持明暗主题的网站。',
-		image: '/mock/css-variables.jpg',
-	},
-	{
-		source: 'Other',
-		timeAgo: '1 周前',
-		title: '个人博客的技术选型思考',
-		excerpt: '为什么选择 Astro？为什么使用 pnpm？这篇文章记录了我搭建个人博客时的技术选型过程和背后的思考。',
-		image: null,
-	},
-];
+import type { FeedItemCardModel } from '../type'; // 按你的实际路径
+import { getCollection } from 'astro:content';
+const posts = await getCollection('blog');
+const feedItems: FeedItemCardModel[] = posts
+  .sort((a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime())
+  .map((post) => {
+    const body = (post.body ?? '').trim();
+    const excerpt = body.split('\n').find(Boolean) ?? '';
+
+    return {
+      id: post.id,
+      publishedAt: post.data.publishedAt.toISOString().slice(0, 10),
+      title: post.data.title,
+      excerpt,
+      url: `/blog/${post.id}/`,
+    };
+  });
 ---
 
-<!doctype html>
-<html lang="zh-CN">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main class="content">
-			<section class="feed">
-				{feedItems.map((item) => (
-					<article class="feed-card">
-						<div class="feed-meta">
-							<span class="feed-source">{item.source}</span>
-							<time class="feed-time">{item.timeAgo}</time>
-						</div>
-						<h2 class="feed-title">{item.title}</h2>
-						{item.excerpt && <p class="feed-excerpt">{item.excerpt}</p>}
-						{item.image && <img class="feed-image" src={item.image} alt="" />}
-					</article>
-				))}
-			</section>
-		</main>
-		<Footer />
-	</body>
-</html>
+<PageLayout title={SITE_TITLE}, description={SITE_DESCRIPTION}>
+	<section class="feed">
+		{feedItems.map((item) => (
+			<article class="feed-card">
+				<div class="feed-meta">
+					<time class="feed-time">{item.publishedAt}</time>
+				</div>
+				<h2 class="feed-title">
+					<a href={item.url}>{item.title}</a>
+				</h2>
+				<p class="feed-excerpt">{item.excerpt}</p>
+			</article>
+		))}
+	</section>
+</PageLayout>
 
 <style>
-	.content {
-		max-width: 1040px;
-		margin: 0 auto;
-		padding: 2.5rem 1.5rem;
-	}
-
 	.feed {
 		max-width: 820px;
 		margin: 0 auto;
@@ -207,10 +132,6 @@ const feedItems = [
 	}
 
 	@media (max-width: 720px) {
-		.content {
-			padding: 1.5rem 1rem;
-		}
-
 		.feed {
 			gap: 1.25rem;
 		}

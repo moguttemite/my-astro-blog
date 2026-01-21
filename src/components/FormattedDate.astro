@@ -1,14 +1,18 @@
 ---
+// 将时间渲染成特定的形式
 interface Props {
 	date: Date;
 }
 
 const { date } = Astro.props;
+if (!(date instanceof Date)) {
+	throw new Error('[FormattedDate] date must be a Date');
+}
 ---
 
 <time datetime={date.toISOString()}>
 	{
-		date.toLocaleDateString('en-us', {
+		date.toLocaleDateString('zh-CN', {
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric',
