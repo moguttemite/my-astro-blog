@@ -36,11 +36,17 @@ const { title, publishedAt } = Astro.props as Props;
 		font-size: 0.95rem;
 		margin-bottom: 0.5rem;
 	}
+	:root[data-theme="dark"] .post-date {
+		color: rgba(255, 255, 255, 0.55);
+	}
 
 	.post-title {
 		margin: 0;
 		font-size: 3rem;
 		line-height: 1.1;
+	}
+	:root[data-theme="dark"] .post-title {
+		color: #f2f2f2; /* 比 body 更亮 */
 	}
 
 	.post-divider {
@@ -48,15 +54,18 @@ const { title, publishedAt } = Astro.props as Props;
 		border: none;
 		border-top: 1px solid rgb(var(--gray-light));
 	}
+	:root[data-theme="dark"] .post-divider {
+		border-top: 1px solid rgba(255, 255, 255, 0.12);
+	}
 
 	.post-body {
 		margin-top: 1.25rem;
 		line-height: 1.75;
 	}
-
-	@media (max-width: 720px) {
-		.post-title {
-			font-size: 2.2rem;
-		}
+	:root[data-theme="dark"] .post-body a {
+		color: #7aa2ff;
+	}
+	:root[data-theme="dark"] .post-body a:hover {
+		color: #9bb7ff;
 	}
 </style>

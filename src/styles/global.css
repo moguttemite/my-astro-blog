@@ -43,6 +43,10 @@ body {
 	font-size: 20px;
 	line-height: 1.7;
 }
+:root[data-theme="dark"] body {
+	background: #1d2020;   /* Qiita / GitHub 系暗色背景 */
+	color: #efefef;        /* 主文本颜色 */
+}
 h1,
 h2,
 h3,
@@ -104,6 +108,10 @@ code {
 	background-color: rgb(var(--gray-light));
 	border-radius: 2px;
 }
+:root[data-theme="dark"] code {
+	background-color: #161b22;
+	color: #e6edf3;
+}
 pre {
 	padding: 1.5em;
 	border-radius: 8px;
@@ -121,6 +129,10 @@ hr {
 	border: none;
 	border-top: 1px solid rgb(var(--gray-light));
 }
+:root[data-theme="dark"] hr {
+	border-top: 1px solid rgba(255,255,255,0.08);
+}
+
 @media (max-width: 720px) {
 	body {
 		font-size: 18px;

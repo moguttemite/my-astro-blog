@@ -15,6 +15,24 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 const { title, description = SITE_TITLE, image } = Astro.props;
 ---
+<script is:inline>
+  (function () {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const applyTheme = (isDark) => {
+      document.documentElement.setAttribute(
+        'data-theme',
+        isDark ? 'dark' : 'light'
+      );
+    };
+
+    applyTheme(media.matches);
+
+    media.addEventListener('change', (e) => {
+      applyTheme(e.matches);
+    });
+  })();
+</script>
 
 <!-- Global Metadata -->
 <meta charset="utf-8" />

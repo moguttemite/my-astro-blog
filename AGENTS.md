@@ -51,26 +51,7 @@ pnpm preview
 ### Code Structure
 Use this outline when referencing files:
 ```bash
-my-astro-blog/
-├── AGENTS.md
-├── LICENSE
-├── README.md
-├── astro.config.mjs
-├── package.json
-├── pnpm-lock.yaml
-├── tsconfig.json
-├── node_modules/ # Dependencies (ignored in git)
-├── public/ # Public static assets
-│ └── fonts/
-├── src/
-│ ├── assets/ # Static images & resources
-│ ├── components/ # Reusable UI components
-│ ├── content/ # Generated or Markdown content
-│ │ └── blog/
-│ ├── layouts/ # Layout templates
-│ ├── pages/ # Route pages
-│ ├── styles/ # Global CSS / styles
-│ └── tools/
+my-astro-blog
 ```
 
 ## Regarding the upload structure of articles
@@ -132,6 +113,10 @@ src/content/blog/系列名称/
 - 每个章节必须包含 index.md
 - 章节之间在结构上彼此独立
 - 首页可按时间轴展示各章节文章
+
+## 关于ダーク模式
+- Card 永远比 Body 亮一点点
+- Header和Footer 永远和 Body 有“边界感”
 
 ## You must strictly comply with the following rules.
 

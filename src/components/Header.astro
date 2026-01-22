@@ -148,17 +148,16 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 		min-height: 3.5rem;
 		margin: 0;
 		padding: 0 1em;
-		background: white;
-		box-shadow: 0 2px 8px rgba(var(--black), 5%);
 		display: flex;
 		align-items: center;
-	}
 
-	@media (prefers-color-scheme: dark) {
-		header {
-			background: rgb(var(--black));
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-		}
+		background: white;
+		border-bottom: 1px solid rgb(var(--gray-light));
+		box-shadow: none;
+	}
+	:root[data-theme="dark"] header {
+		background: #2f3232; /* 与 body 同色 */
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 	}
 
 	h2 {
@@ -172,11 +171,8 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 		padding: 1em 0.5em;
 		display: inline-block;
 	}
-
-	@media (prefers-color-scheme: dark) {
-		h2 a {
-			color: rgb(var(--gray-light));
-		}
+	:root[data-theme="dark"] h2 a {
+		color: #e6e6e6;
 	}
 
 	.header-container {
@@ -197,33 +193,6 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 		color: rgb(var(--black));
 	}
 
-	.platform-link svg {
-		color: rgb(var(--gray));
-		transition: color 0.2s ease;
-	}
-
-	.platform-link:hover svg {
-		color: rgb(var(--black));
-	}
-
-	@media (prefers-color-scheme: dark) {
-		.platform-link {
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-link:hover {
-			background: rgba(255, 255, 255, 0.1);
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-link svg {
-			color: rgb(var(--gray));
-		}
-
-		.platform-link:hover svg {
-			color: rgb(var(--gray-light));
-		}
-	}
 
 	/* Platform Link Primary (Narrow Screen) */
 	.platform-link-primary {
@@ -235,34 +204,6 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 	.platform-link-primary:hover {
 		background: rgb(var(--gray-light));
 		color: rgb(var(--black));
-	}
-
-	.platform-link-primary svg {
-		color: rgb(var(--gray));
-		transition: color 0.2s ease;
-	}
-
-	.platform-link-primary:hover svg {
-		color: rgb(var(--black));
-	}
-
-	@media (prefers-color-scheme: dark) {
-		.platform-link-primary {
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-link-primary:hover {
-			background: rgba(255, 255, 255, 0.1);
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-link-primary svg {
-			color: rgb(var(--gray));
-		}
-
-		.platform-link-primary:hover svg {
-			color: rgb(var(--gray-light));
-		}
 	}
 
 	/* Dropdown Trigger (Narrow Screen Only) */
@@ -284,43 +225,16 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 		background: rgb(var(--gray-light));
 	}
 
-	.platform-dropdown-trigger svg {
-		color: rgb(var(--gray));
-		transition: color 0.2s ease;
-	}
-
-	.platform-dropdown-trigger:hover svg {
-		color: rgb(var(--black));
-	}
-
-	@media (prefers-color-scheme: dark) {
-		.platform-dropdown-trigger {
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-dropdown-trigger:hover {
-			background: rgba(255, 255, 255, 0.1);
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-dropdown-trigger[aria-expanded="true"] {
-			background: rgba(255, 255, 255, 0.1);
-		}
-
-		.platform-dropdown-trigger svg {
-			color: rgb(var(--gray));
-		}
-
-		.platform-dropdown-trigger:hover svg {
-			color: rgb(var(--gray-light));
-		}
-	}
-
 	/* Platform Dropdown Menu */
 	.platform-dropdown {
 		border: 1px solid rgb(var(--gray-light));
 		box-shadow: 0 2px 8px rgba(var(--black), 8%), 0 4px 16px rgba(var(--black), 4%);
 		background: white;
+	}
+	:root[data-theme="dark"] .platform-dropdown {
+		background: #3a3d3d; /* 比 header 略亮 */
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		box-shadow: none;
 	}
 
 	.platform-item {
@@ -329,48 +243,31 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 		border-radius: 4px;
 		margin: 0.125rem 0.5rem;
 	}
+	:root[data-theme="dark"] .platform-item {
+		color: #e6e6e6;
+	}
 
 	.platform-item:hover {
 		background: rgb(var(--gray-light));
 		color: rgb(var(--black));
+	}
+	:root[data-theme="dark"] .platform-item:hover {
+		background: rgba(255, 255, 255, 0.08);
 	}
 
 	.platform-item .platform-name {
 		color: inherit;
 	}
 
-	.platform-item svg {
-		color: rgb(var(--gray));
-		transition: color 0.2s ease;
+	:root[data-theme="dark"] .platform-link,
+	:root[data-theme="dark"] .platform-link-primary,
+	:root[data-theme="dark"] .platform-dropdown-trigger {
+		color: rgba(255, 255, 255, 0.7);
 	}
 
-	.platform-item:hover svg {
-		color: rgb(var(--black));
+	:root[data-theme="dark"] .platform-link:hover,
+	:root[data-theme="dark"] .platform-link-primary:hover,
+	:root[data-theme="dark"] .platform-dropdown-trigger:hover {
+		background: rgba(255, 255, 255, 0.08);
 	}
-
-	@media (prefers-color-scheme: dark) {
-		.platform-dropdown {
-			background: rgb(var(--black));
-			border: 1px solid rgba(255, 255, 255, 0.1);
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
-		}
-
-		.platform-item {
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-item:hover {
-			background: rgba(255, 255, 255, 0.1);
-			color: rgb(var(--gray-light));
-		}
-
-		.platform-item svg {
-			color: rgb(var(--gray));
-		}
-
-		.platform-item:hover svg {
-			color: rgb(var(--gray-light));
-		}
-	}
-
 </style>

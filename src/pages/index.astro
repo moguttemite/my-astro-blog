@@ -52,11 +52,15 @@ const feedItems: FeedItemCardModel[] = posts
 		border: 1px solid rgb(var(--gray-light));
 		padding: 1.5rem;
 		box-shadow: 0 1px 3px rgba(var(--black), 5%);
-		transition: box-shadow 0.2s ease;
+		transition: border-color 0.2s ease;
 	}
-
-	.feed-card:hover {
-		box-shadow: 0 2px 8px rgba(var(--black), 8%);
+	:root[data-theme="dark"] .feed-card {
+		background-color: #2f3232;
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		box-shadow: none;
+	}
+	:root[data-theme="dark"] .feed-card:hover {
+		border-color: rgba(255, 255, 255, 0.12);
 	}
 
 	.feed-meta {
@@ -67,17 +71,15 @@ const feedItems: FeedItemCardModel[] = posts
 		font-size: 0.875rem;
 		color: rgb(var(--gray));
 	}
-
-	.feed-source {
-		font-weight: 600;
-		color: rgb(var(--gray-dark));
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		font-size: 0.75rem;
+	:root[data-theme="dark"] .feed-meta {
+		color: #9da7b3;
 	}
 
 	.feed-time {
 		color: rgb(var(--gray));
+	}
+	:root[data-theme="dark"] .feed-time {
+		color: #7d8590;
 	}
 
 	.feed-title {
@@ -87,6 +89,12 @@ const feedItems: FeedItemCardModel[] = posts
 		color: rgb(var(--black));
 		font-weight: 600;
 	}
+	:root[data-theme="dark"] .feed-title {
+		color: #e6edf3;
+	}
+	:root[data-theme="dark"] .feed-title a {
+		color: #58a6ff;
+	}
 
 	.feed-excerpt {
 		margin: 0 0 1rem 0;
@@ -94,41 +102,8 @@ const feedItems: FeedItemCardModel[] = posts
 		line-height: 1.6;
 		font-size: 0.9375rem;
 	}
-
-	.feed-image {
-		width: 100%;
-		height: auto;
-		border-radius: 6px;
-		margin-top: 1rem;
-		display: block;
-	}
-
-	@media (prefers-color-scheme: dark) {
-		.feed-card {
-			background: rgb(var(--black));
-			border: 1px solid rgba(255, 255, 255, 0.1);
-			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-		}
-
-		.feed-card:hover {
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-		}
-
-		.feed-source {
-			color: rgb(var(--gray-light));
-		}
-
-		.feed-time {
-			color: rgb(var(--gray));
-		}
-
-		.feed-title {
-			color: rgb(var(--gray-light));
-		}
-
-		.feed-excerpt {
-			color: rgb(var(--gray));
-		}
+	:root[data-theme="dark"] .feed-excerpt {
+		color: #9da7b3;
 	}
 
 	@media (max-width: 720px) {
