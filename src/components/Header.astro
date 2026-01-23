@@ -1,5 +1,5 @@
 ---
-import { SITE_TITLE } from '../consts';
+import Logo from './Logo.astro';
 
 // 外部创作平台数据
 const platforms = [
@@ -32,7 +32,7 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 	<div class="header-container w-full flex items-center">
 		<!-- Left: Site Identity -->
 		<div class="site-identity flex-shrink-0">
-			<h2><a href="/">{SITE_TITLE}</a></h2>
+			<Logo />
 		</div>
 
 		<!-- Center: Empty nav (semantic only) -->

@@ -1,6 +1,7 @@
 ---
 import PageLayout from '../layouts/PageLayout.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import { extractExcerpt } from '../utils/excerpt';
 
 import type { FeedItemCardModel } from '../type'; // 按你的实际路径
 import { getCollection } from 'astro:content';
@@ -8,8 +9,7 @@ const posts = await getCollection('blog');
 const feedItems: FeedItemCardModel[] = posts
   .sort((a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime())
   .map((post) => {
-    const body = (post.body ?? '').trim();
-    const excerpt = body.split('\n').find(Boolean) ?? '';
+	const excerpt = extractExcerpt(post.body ?? '');
 
     return {
       id: post.id,
@@ -28,9 +28,11 @@ const feedItems: FeedItemCardModel[] = posts
 				<div class="feed-meta">
 					<time class="feed-time">{item.publishedAt}</time>
 				</div>
+
 				<h2 class="feed-title">
 					<a href={item.url}>{item.title}</a>
-				</h2>
+				</h2>	
+
 				<p class="feed-excerpt">{item.excerpt}</p>
 			</article>
 		))}
@@ -97,6 +99,14 @@ const feedItems: FeedItemCardModel[] = posts
 	}
 
 	.feed-excerpt {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+
+		/* 非 WebKit 浏览器的兜底 */
+		max-height: calc(1.6em * 2);
+		
 		margin: 0 0 1rem 0;
 		color: rgb(var(--gray-dark));
 		line-height: 1.6;

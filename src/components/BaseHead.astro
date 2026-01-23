@@ -20,10 +20,10 @@ const { title, description = SITE_TITLE, image } = Astro.props;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
 
     const applyTheme = (isDark) => {
-      document.documentElement.setAttribute(
-        'data-theme',
-        isDark ? 'dark' : 'light'
-      );
+      const theme = isDark ? 'dark' : 'light';
+
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.classList.toggle('dark', isDark);
     };
 
     applyTheme(media.matches);
