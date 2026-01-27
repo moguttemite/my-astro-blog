@@ -1,6 +1,7 @@
 ---
 title: 如果日本政府开放了虚拟货币ETF会怎样？
 publishedAt: 2026-01-25
+canonicalId: crypto-etf-japan
 ---
 
 ## 背景：日本ETF与加密资产监管现状（2026.01）

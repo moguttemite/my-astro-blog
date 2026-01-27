@@ -1,22 +1,21 @@
 ---
-import PageLayout from '../layouts/PageLayout.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-import { extractExcerpt } from '../utils/excerpt';
-
-import type { FeedItemCardModel } from '../type'; // 按你的实际路径
+import PageLayout from '../../layouts/PageLayout.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+import { extractExcerpt } from '../../utils/excerpt';
+import type { FeedItemCardModel } from '../../type';
 import { getCollection } from 'astro:content';
-const posts = await getCollection('blog');
+
+const posts = await getCollection('blog_ja');
 const feedItems: FeedItemCardModel[] = posts
   .sort((a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime())
   .map((post) => {
-	const excerpt = extractExcerpt(post.body ?? '');
-
+    const excerpt = extractExcerpt(post.body ?? '');
     return {
       id: post.id,
       publishedAt: post.data.publishedAt.toISOString().slice(0, 10),
       title: post.data.title,
       excerpt,
-      url: `/blog/${post.data.canonicalId}/`,
+      url: `/ja/blog/${post.data.canonicalId}/`,
     };
   });
 ---

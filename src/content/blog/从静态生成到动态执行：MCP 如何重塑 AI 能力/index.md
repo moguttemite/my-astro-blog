@@ -1,6 +1,7 @@
 ---
 title: 从静态生成到动态执行：MCP 如何重塑 AI 能力
 publishedAt: 2026-01-22
+canonicalId: mcp-ai-capability
 ---
 
 ## 一、MCP 是什么

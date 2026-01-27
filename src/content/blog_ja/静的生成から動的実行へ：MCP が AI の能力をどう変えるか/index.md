@@ -1,6 +1,7 @@
 ---
 title: 静的生成から動的実行へ：MCP が AI の能力をどう変えるか
 publishedAt: 2026-01-22
+canonicalId: mcp-ai-capability
 ---
 
 ## 一、MCP とは

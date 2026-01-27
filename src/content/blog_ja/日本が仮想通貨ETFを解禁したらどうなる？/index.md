@@ -1,6 +1,7 @@
 ---
 title: 日本政府が仮想通貨ETFを解禁したらどうなる？
 publishedAt: 2026-01-25
+canonicalId: crypto-etf-japan
 ---
 
 ## 背景：日本のETFと暗号資産規制の現状（2026.01）
