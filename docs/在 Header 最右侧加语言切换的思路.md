@@ -23,9 +23,10 @@ my-astro-blog/
 │   │   ├── Header.astro     # 顶栏（Logo、nav、平台链接；语言切换拟放此处）
 │   │   ├── HeaderLink.astro
 │   │   └── Logo.astro
-│   ├── content/             # 内容源：Markdown/MDX
-│   │   ├── blog/            # 中文博文（当前已接入 collection）
-│   │   └── blog_ja/         # 日文博文（尚未接入 collection，不参与构建）
+│   ├── content/             # 内容源：Markdown/MDX（legacy collections）
+│   │   ├── blog/            # 中文博文（blog collection，schema 含 canonicalId）
+│   │   └── blog_ja/         # 日文博文（blog_ja collection，已接入构建）
+│   ├── content/config.ts    # 内容集合定义（legacy：blog、blog_ja，与 astro.config legacy.collections 配合）
 │   ├── layouts/
 │   │   ├── BlogPost.astro   # 单篇文章布局
 │   │   └── PageLayout.astro # 全站页面布局（含 Header/Footer）
@@ -38,7 +39,6 @@ my-astro-blog/
 │   │   └── global.css       # 全局样式（含 Tailwind）
 │   ├── utils/
 │   │   └── excerpt.ts       # 摘要等工具
-│   ├── content.config.ts    # 内容集合定义（目前仅注册 blog）
 │   ├── consts.ts            # 全局常量（站点标题、描述、发布平台列表等）
 │   └── type.ts              # 共享类型
 ├── tools/
@@ -53,11 +53,11 @@ my-astro-blog/
 ### 说明
 
 - **项目名称与定位**：my-astro-blog，基于 Astro 的静态博客，Markdown 写作、通过 GitHub Actions 构建与部署，作为内容的 Single Source of Truth。
-- **技术栈**：Astro（SSG）、pnpm 包管理、Tailwind 4、MDX、Sitemap；当前未配置 i18n。
-- **内容规范**：博文按 AGENTS.md 约定组织——纯文短文可单文件放在 `blog/` 下；带图文章使用「文章-slug 目录 + index.md」；系列/教程可用多章节目录，每章独立 `index.md`。内容集合在 `src/content.config.ts` 中注册，目前仅 `blog` 指向 `src/content/blog/`。
+- **技术栈**：Astro（SSG）、pnpm 包管理、Tailwind 4、MDX、Sitemap；**已配置 Astro 内置 i18n**（`astro.config.mjs` 中 `locales: ['zh','ja','en']`，`defaultLocale: 'zh'`，`prefixDefaultLocale: false`）。当前使用 **legacy content collections**（`src/content/config.ts` + `astro.config.mjs` 的 `legacy.collections: true`），以规避 Windows 下非 ASCII 路径的 content 扫描问题。
+- **内容规范**：博文按 AGENTS.md 约定组织——纯文短文可单文件放在 `blog/` 下；带图文章使用「文章-slug 目录 + index.md」；系列/教程可用多章节目录，每章独立 `index.md`。内容集合在 `src/content/config.ts` 中定义，当前有 `blog`（中文）、`blog_ja`（日文），二者 schema 均含 `canonicalId`，用于同文章多语言对应。
 - **发布平台**：对外发布目标在 `src/consts.ts` 的 `PUBLISH_PLATFORMS` 中定义（当前含 `x`、`qiita`），对应 `tools/publishers/` 下的发布逻辑；站内 Header 右侧会展示这些平台链接。
 - **界面与体验**：全站响应式、支持浏览器 dark 模式；Card 略亮于 Body，Header/Footer 与 Body 保持清晰边界（见 AGENTS.md「关于ダーク模式」）。
-- **多语言目标**：AGENTS 要求站内支持中文、日文、英文；当前为单语（中文）站，日文内容仅存在于 `blog_ja/`，尚未接入路由与构建。本文档后续章节在此背景下讨论「在 Header 最右侧加语言切换」的现状、思路与定稿方案。
+- **多语言目标**：AGENTS 要求站内支持中文、日文、英文。**当前进度**：i18n 路由已配置；中文沿用根路径（`/`、`/blog/xxx/`），日文已有 `src/pages/ja/`（`/ja/`、`/ja/blog/xxx/`），日文 collection `blog_ja` 已接入且与中文通过 `canonicalId` 对应；英文尚无 `/en` 页面与 `blog_en`。Header 尚未加入语言切换，PageLayout 的 `<html lang>` 仍写死。本文档后续章节在此背景下讨论「在 Header 最右侧加语言切换」的现状、思路与定稿方案。
 
 ---
 
@@ -71,34 +71,35 @@ my-astro-blog/
 | 包管理 | pnpm |
 | 样式 | Tailwind 4（Vite 插件） |
 | 集成 | MDX、Sitemap |
-| i18n | astro.config.mjs 未配置 i18n，无 @astrojs/i18n 等集成 |
+| i18n | **已配置**：`astro.config.mjs` 中 `i18n: { locales: ['zh','ja','en'], defaultLocale: 'zh', routing: { prefixDefaultLocale: false } }`，未引入第三方 i18n 库 |
+| content | **Legacy collections**：`src/content/config.ts` 定义 `blog`、`blog_ja`，`astro.config.mjs` 中 `legacy: { collections: true }`（见 config 内注释的 Windows 非 ASCII 路径说明） |
 
 ### 2. 内容与路由现状
 
 | 维度 | 现状 |
 |------|------|
-| 内容集合 | content.config.ts 仅注册 blog，对应 `src/content/blog/` |
-| 中文内容 | blog 下两篇（MCP、日本虚拟货币 ETF），入口为 index.md，符合「方式2」 |
-| 日文内容 | 存在 `src/content/blog_ja/` 及两篇日文文章，但未被任何 collection 使用，不参与构建 |
-| 英文 | 尚无专门内容或 collection |
-| 路由 | 全部在根下：`/`、`/about`、`/blog/xxx/`，无 `/ja`、`/en`、`/zh` 等语言前缀 |
+| 内容集合 | `content/config.ts`（legacy）注册 `blog`、`blog_ja`，分别对应 `src/content/blog/`、`src/content/blog_ja/` |
+| 中文内容 | `blog` 下两篇（MCP、日本虚拟货币 ETF），入口为 index.md，schema 含 `canonicalId`，URL 为 `/blog/{canonicalId}/` |
+| 日文内容 | **已接入**：`blog_ja` 下两篇，与中文同主题通过相同 `canonicalId` 对应，URL 为 `/ja/blog/{canonicalId}/` |
+| 英文 | 尚无 `blog_en` 或 `/en` 路由 |
+| 路由 | 中文在根：`/`、`/about`、`/blog/xxx/`；日文在 `/ja/`、`/ja/blog/xxx/`；无 `/en` |
 
-结论：当前为「单语（中文）站」；日文仅文件存在，未接入路由与构建。
+结论：中/日双语言路由与内容已打通；英文与 Header 语言切换尚未落地。
 
 ### 3. 布局与 UI
 
 | 区域 | 说明 |
 |------|------|
-| PageLayout | `<html lang="zh-CN">` 写死，全站共用 |
-| Header | 左：Logo（0xNotes → /）；中：空 `<nav>`；右：平台链接（X、Qiita），宽屏横向、窄屏「主平台 + 三点下拉」。语言切换拟放在此处 |
-| Footer | 版权 + “Built with Astro”，无多语言文案 |
-| 首页 | 从 `getCollection('blog')` 取文章，卡片流展示，链接形如 `/blog/{id}/` |
+| PageLayout | `<html lang="zh-CN">` **仍写死**，未按 `Astro.currentLocale` 动态输出，中/日页面共用同一 layout |
+| Header | 左：Logo（0xNotes → /）；中：空 `<nav>`；右：平台链接（X、Qiita），宽屏横向、窄屏「主平台 + 三点下拉」。**语言切换尚未加入** |
+| Footer | 版权 + “Built with Astro”，无多语言文案（定稿为全站统一、不做 i18n） |
+| 首页 | 根 `/` 用 `getCollection('blog')`，链接 `/blog/{canonicalId}/`；`/ja/` 用 `getCollection('blog_ja')`，链接 `/ja/blog/{canonicalId}/` |
 
 ### 4. 与需求的关系
 
 - **AGENTS 要求**：支持中文、日文、英文，且符合 Astro 最佳实践。
-- **当前缺口**：Astro 官方 i18n 路由、按语言拆分内容、以及「当前语言」的明确来源。
-- **要点**：语言切换的前提是明确「当前语言」与「各语言对应 URL」；Header 右侧的 switcher 仅是其中一个 UI 落点。
+- **当前缺口**：Header 语言切换 UI、PageLayout 按 locale 动态 `lang`、可选的首访语言判定与 `/en` 占位。
+- **要点**：语言切换的前提是明确「当前语言」与「各语言对应 URL」；Header 右侧的 switcher 是接下来要落地的核心 UI。
 
 ---
 
@@ -233,43 +234,48 @@ Astro 3.x 起在 `astro.config.mjs` 提供 `i18n` 配置与 `astro:i18n`，实�
 
 **目标**：在不破坏现有 URL 的前提下，引入 zh / ja / en 三语言，并在 Header 右侧提供可靠的语言切换入口。
 
+### 当前进度小结（最近更新：场景 1–6 验收通过）
+
+- **已完成**：A 设计冻结、B1/B2 i18n 配置与 locale 可用性、C1 PageLayout 动态 `lang`、D1 中/日页面目录与路由、D2 日文真实内容、E Header 语言切换、**F 首次访问语言判定**（根路径注入脚本按 `navigator.language` 重定向到 `/ja/` 或 `/en/`，同源 referrer 不重定向）、**Logo 按当前语言回首页**（`Logo` 接收 `href`，Header 传 `getRelativeLocaleUrl(currentLocale, '')`）、G1 中/日 content 集合、G2 中/日页面使用对应 collection。**场景 1–6 已全部验证通过**（见下「验收验证记录」）。
+- **未完成**：C2 全站无副作用验证（RSS/sitemap/dark 回归）、D1 的 `/en` 与 G2 的 `/en/*` 使用 `blog_en`、G1 的 `blog_en` 预留、H SEO/稳定性检查、以及最终验收中的「访问 `/en/` = 英文」。
+
 ### A. 设计冻结确认（必须先确认）
 
-- [ ] 默认语言确定为 `zh`
-- [ ] 支持语言集合固定为：`zh` / `ja` / `en`
-- [ ] URL 形状采用：默认语言无前缀，其它语言带前缀  
+- [x] 默认语言确定为 `zh`
+- [x] 支持语言集合固定为：`zh` / `ja` / `en`
+- [x] URL 形状采用：默认语言无前缀，其它语言带前缀  
   - `/` → 中文  
   - `/ja/*` → 日文  
   - `/en/*` → 英文
-- [ ] 语言切换只通过 URL 跳转，不使用 cookie / localStorage
-- [ ] Header 不依赖 content collection
+- [x] 语言切换只通过 URL 跳转，不使用 cookie / localStorage
+- [x] Header 不依赖 content collection
 
-> ⚠️ **这一步没全部确认，后面不要动代码。**
+> ✅ 已通过现有实现确认，无需再改设计。
 
 ### B. Astro i18n 基础配置层
 
 #### B1. astro.config.mjs
 
-- [ ] 启用 Astro 内置 i18n
-- [ ] 明确配置：
+- [x] 启用 Astro 内置 i18n
+- [x] 明确配置：
   - `locales: ['zh', 'ja', 'en']`
   - `defaultLocale: 'zh'`
   - `routing.prefixDefaultLocale: false`
-- [ ] 不引入第三方 i18n 库
+- [x] 不引入第三方 i18n 库
 
 #### B2. Locale 运行时可用性
 
-- [ ] 页面中可以可靠获取 `Astro.currentLocale`
-- [ ] 默认语言页面（根路径）能正确识别为 `zh`
-- [ ] `/ja/*` 页面 `currentLocale === 'ja'`
-- [ ] `/en/*` 页面 `currentLocale === 'en'`
+- [x] 页面中可以可靠获取 `Astro.currentLocale`（已配置 i18n 时可用）
+- [x] 默认语言页面（根路径）能正确识别为 `zh`
+- [x] `/ja/*` 页面 `currentLocale === 'ja'`
+- [ ] `/en/*` 页面 `currentLocale === 'en'`（尚未建 `/en` 路由）
 
 ### C. HTML / Layout 层适配
 
 #### C1. PageLayout / 根布局
 
-- [ ] `<html lang="...">` 不再写死
-- [ ] `lang` 值根据 locale 动态输出：
+- [x] `<html lang="...">` 不再写死
+- [x] `lang` 值根据 locale 动态输出：
   - `zh` → `zh-CN`
   - `ja` → `ja`
   - `en` → `en`（或 `en-US`，但必须统一）
@@ -284,66 +290,67 @@ Astro 3.x 起在 `astro.config.mjs` 提供 `i18n` 配置与 `astro:i18n`，实�
 
 #### D1. 页面目录
 
-- [ ] 中文页面继续使用现有 `src/pages/*`
-- [ ] 新增 `src/pages/ja/`、`src/pages/en/`
-- [ ] 至少保证 `/ja/`、`/en/` 能访问
+- [x] 中文页面继续使用现有 `src/pages/*`
+- [x] 新增 `src/pages/ja/`（含 `index.astro`、`blog/[...slug].astro`）
+- [ ] 新增 `src/pages/en/`（尚未建，可选先做占位）
 
 #### D2. 不追求完整内容
 
-- [ ] 日文 / 英文页面允许暂时是占位内容
-- [ ] 不要求 blog 立即多语言完成
-- [ ] 只验证路由是否成立
+- [x] 日文 / 英文页面允许暂时是占位内容（日文已是真实 blog_ja 内容）
+- [x] 不要求 blog 立即多语言完成
+- [x] 只验证路由是否成立（/、/ja/、/ja/blog/xxx 已成立）
 
 ### E. Header 语言切换（核心 UI）
 
 #### E1. 结构与职责
 
-- [ ] 语言切换放在 Header 最右侧
-- [ ] 与平台链接（X / Qiita）同一逻辑层级
-- [ ] Header 不读取文章数据、不判断是否存在翻译
+- [x] 语言切换放在 Header 最右侧
+- [x] 与平台链接（X / Qiita）同一逻辑层级
+- [x] Header 不读取文章数据、不判断是否存在翻译
 
 #### E2. 数据来源
 
-- [ ] 当前语言来源：`Astro.currentLocale`
-- [ ] 目标语言 URL 使用 `astro:i18n` 工具函数生成
-- [ ] 切换语言 = 跳转到「当前 path 的目标 locale URL」
+- [x] 当前语言来源：`Astro.currentLocale`
+- [x] 目标语言 URL 使用 `astro:i18n` 工具函数生成
+- [x] 切换语言 = 跳转到「当前 path 的目标 locale URL」
 
 #### E3. 行为要求
 
-- [ ] 点击语言选项立即跳转（无刷新 hack）
-- [ ] 当前语言有明确高亮或 `aria-current`
-- [ ] 当前语言不可点击或点击无副作用
+- [x] 点击语言选项立即跳转（无刷新 hack）
+- [x] 当前语言有明确高亮或 `aria-current`
+- [x] 当前语言不可点击或点击无副作用
 
 #### E4. 交互与可用性
 
-- [ ] 桌面端可 hover 展开
-- [ ] 移动端可 click 展开
-- [ ] 键盘可 focus / enter 操作
-- [ ] 使用 `<nav aria-label="Language selection">`
+- [x] 桌面端可 hover 展开
+- [x] 移动端可 click 展开
+- [x] 键盘可 focus / enter 操作
+- [x] 使用 `<nav aria-label="Language selection">`
 
 ### F. 首次访问语言判定（可选但推荐）
 
 > ⚠️ **这是最容易出 bug 的部分。**
 
-- [ ] 仅在访问根路径 `/` 且无 locale 时生效
-- [ ] 根据浏览器语言判断是否跳转 `/ja` 或 `/en`
-- [ ] 不匹配 → 留在默认中文
-- [ ] 用户一旦手动切换语言，不再自动跳
+- [x] 仅在访问根路径 `/` 时生效（由首页通过 `injectRedirectScript` 在 `<head>` 中注入脚本，静态站用客户端重定向）
+- [x] **仅疑似首访时重定向**：若 `document.referrer` 与 `location.origin` 同源，视为站内导航（如从文章点 Logo 回首页、或从 /ja/ 点「中文」回 /），**不重定向**，避免覆盖用户选择；仅当 referrer 为空或外站时才按浏览器语言跳 `/ja/` 或 `/en/`
+- [x] 根据浏览器语言判断是否跳转 `/ja/` 或 `/en/`（`navigator.language` / `navigator.userLanguage`，以 ja / en 开头则跳）
+- [x] 不匹配 → 留在默认中文
+- [x] 用户从站内主动切语言或点 Logo 回首页时不被改写（依赖上述 referrer 判断）
 
 ### G. 内容层准备（非强制，但要规划）
 
-#### G1. content.config.ts
+#### G1. content 集合
 
-- [ ] 中文：已有 `blog`
-- [ ] 日文：新增 `blog_ja`
-- [ ] 英文：预留 `blog_en`
+- [x] 中文：已有 `blog`（`src/content/config.ts`）
+- [x] 日文：已有 `blog_ja`
+- [ ] 英文：预留 `blog_en`（可等有英文内容时再加）
 
 #### G2. 页面调用原则
 
-- [ ] `/` 使用 `blog`
-- [ ] `/ja/*` 使用 `blog_ja`
-- [ ] `/en/*` 使用 `blog_en`
-- [ ] Header 不感知这些差异
+- [x] `/` 使用 `blog`
+- [x] `/ja/*` 使用 `blog_ja`
+- [ ] `/en/*` 使用 `blog_en`（待建 en 路由后）
+- [x] Header 不感知这些差异
 
 ### H. SEO / 稳定性检查
 
@@ -362,10 +369,23 @@ Astro 3.x 起在 `astro.config.mjs` 提供 `i18n` 配置与 `astro:i18n`，实�
 
 ### 最终验收标准（硬条件）
 
-- [ ] 访问 `/` = 中文
-- [ ] 访问 `/ja/` = 日文
+- [x] 访问 `/` = 中文
+- [x] 访问 `/ja/` = 日文
 - [ ] 访问 `/en/` = 英文
-- [ ] Header 切换语言后 URL 改变且页面正确
-- [ ] 刷新页面语言不反跳
-- [ ] 现有中文链接全部有效
+- [x] Header 切换语言后 URL 改变且页面正确
+- [x] 刷新页面语言不反跳（当前实现仅用 URL，无首访重定向，刷新保持当前地址）
+- [x] 现有中文链接全部有效
+
+---
+
+### 接下来从这里开始
+
+- **当前进度**：i18n 配置、中/日路由与内容、C1 动态 `lang`、E Header 语言切换、**F 首次访问语言判定**（根路径按 `navigator.language` 客户端重定向，同源 referrer 不跳）、**Logo 按当前语言回首页**（Header 传 `homeHref={getRelativeLocaleUrl(currentLocale, '')}` 给 Logo）均已落地；**场景 1–6 验收已全部通过**。最终验收仅剩「访问 `/en/` = 英文」依赖尚未存在的 `/en` 路由。
+
+- **下一步建议（按需排期）**  
+  1. **D1 `/en` 占位**：新增 `src/pages/en/index.astro`（可先做占位页），满足「访问 `/en/` = 英文」的验收。若需英文列表，再补 `blog_en`（G1）与 `/en/*` 使用逻辑（G2）。  
+  2. **C2 全站无副作用验证**：确认 RSS、sitemap、dark 模式在 i18n 与语言切换上线后无回归。  
+  3. **H SEO/稳定性**：在有多语言正式内容后，做 canonical、分享与构建告警等检查。
+
+- **暂不实施**：I 中列出的自动翻译、语言 cookie、Footer 多语言、文章级智能匹配、hreflang 深度优化，保持不做。
 

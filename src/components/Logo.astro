@@ -1,4 +1,8 @@
-<a href="/" class="logo" aria-label="0xNotes">
+---
+interface Props { href?: string; }
+const { href = '/' } = Astro.props;
+---
+<a href={href} class="logo" aria-label="0xNotes">
   <span class="bracket">[</span>
   <span class="hex">0x</span>
   <span class="name">Notes</span>

@@ -21,7 +21,7 @@ const feedItems: FeedItemCardModel[] = posts
   });
 ---
 
-<PageLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+<PageLayout title={SITE_TITLE} description={SITE_DESCRIPTION} injectRedirectScript>
 	<section class="feed">
 		{feedItems.map((item) => (
 			<article class="feed-card">

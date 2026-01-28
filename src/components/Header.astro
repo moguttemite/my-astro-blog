@@ -1,5 +1,23 @@
 ---
 import Logo from './Logo.astro';
+import { getRelativeLocaleUrl } from 'astro:i18n';
+
+// 语言切换：与 astro.config.mjs i18n.locales 一致，仅用 URL 跳转
+const LOCALES: { code: string; label: string }[] = [
+  { code: 'zh', label: '中文' },
+  { code: 'ja', label: '日本語' },
+  { code: 'en', label: 'English' },
+];
+const currentLocale = Astro.currentLocale ?? 'zh';
+const pathname = Astro.url.pathname;
+const pathWithoutLocale = pathname.replace(/^\/(ja|en)\/?/, '/').replace(/^\/?$/, '').replace(/^\//, '');
+const localeEntries = LOCALES.map(({ code, label }) => ({
+  code,
+  label,
+  href: getRelativeLocaleUrl(code, pathWithoutLocale),
+}));
+const homeHref = getRelativeLocaleUrl(currentLocale, '');
+const globeIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0z" fill="none"/><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>`;
 
 // 外部创作平台数据
 const platforms = [
@@ -30,16 +48,47 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 
 <header>
 	<div class="header-container w-full flex items-center">
-		<!-- Left: Site Identity -->
+		<!-- Left: Site Identity：Logo 指向当前语言的首页 -->
 		<div class="site-identity flex-shrink-0">
-			<Logo />
+			<Logo href={homeHref} />
 		</div>
 
 		<!-- Center: Empty nav (semantic only) -->
 		<nav class="flex-1" aria-label="Main navigation"></nav>
 
-		<!-- Right: External Platforms -->
+		<!-- Right: Language switcher + External Platforms -->
 		<div class="platforms-container flex-shrink-0 flex items-center gap-2">
+			<!-- 语言切换：地球图标 + hover/click 下拉，定稿见 docs -->
+			<nav class="lang-nav" aria-label="Language selection">
+				<div class="lang-trigger-wrap" id="lang-dropdown-wrap">
+					<button
+						id="lang-dropdown-trigger"
+						type="button"
+						class="lang-dropdown-trigger"
+						aria-haspopup="true"
+						aria-expanded="false"
+						aria-label="选择语言"
+					>
+						<span class="lang-icon inline-flex items-center justify-center w-5 h-5" set:html={globeIconSvg}></span>
+					</button>
+					<ul
+						id="lang-dropdown"
+						class="lang-dropdown absolute right-0 top-full mt-1.5 min-w-[10rem] rounded-lg py-1 hidden z-50"
+						role="menu"
+					>
+						{localeEntries.map(({ code, label, href }) => (
+							<li role="none">
+								{code === currentLocale ? (
+									<span class="lang-item lang-item-current" role="menuitem" aria-current="page">{label}</span>
+								) : (
+									<a href={href} class="lang-item" role="menuitem">{label}</a>
+								)}
+							</li>
+						))}
+					</ul>
+				</div>
+			</nav>
+
 			<!-- 宽屏：所有平台并列展示，每一项直接跳转 -->
 			<div class="platforms-wide hidden md:flex items-center gap-3">
 				{platforms.map((p) => (
@@ -111,20 +160,16 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 </header>
 
 <script>
-	// 下拉菜单交互逻辑（客户端脚本，仅窄屏）
+	// 平台下拉菜单（窄屏）
 	const trigger = document.getElementById('platform-dropdown-trigger');
 	const dropdown = document.getElementById('platform-dropdown');
-
 	if (trigger && dropdown) {
-		// 点击触发器切换下拉菜单
 		trigger.addEventListener('click', (e) => {
 			e.stopPropagation();
 			const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
 			trigger.setAttribute('aria-expanded', String(!isExpanded));
 			dropdown.classList.toggle('hidden');
 		});
-
-		// 点击外部关闭下拉菜单
 		document.addEventListener('click', (e) => {
 			const target = e.target;
 			if (target instanceof Node && !trigger.contains(target) && !dropdown.contains(target)) {
@@ -132,13 +177,43 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 				dropdown.classList.add('hidden');
 			}
 		});
-
-		// ESC 键关闭下拉菜单
 		document.addEventListener('keydown', (e) => {
 			if (e.key === 'Escape') {
 				trigger.setAttribute('aria-expanded', 'false');
 				dropdown.classList.add('hidden');
 			}
+		});
+	}
+
+	// 语言切换下拉：hover 展开（桌面）+ click 切换（移动端与键盘）
+	const langWrap = document.getElementById('lang-dropdown-wrap');
+	const langTrigger = document.getElementById('lang-dropdown-trigger');
+	const langDropdown = document.getElementById('lang-dropdown');
+	if (langWrap && langTrigger && langDropdown) {
+		const open = () => {
+			langTrigger.setAttribute('aria-expanded', 'true');
+			langDropdown.classList.remove('hidden');
+		};
+		const close = () => {
+			langTrigger.setAttribute('aria-expanded', 'false');
+			langDropdown.classList.add('hidden');
+		};
+		const isOpen = () => langTrigger.getAttribute('aria-expanded') === 'true';
+
+		langWrap.addEventListener('mouseenter', open);
+		langWrap.addEventListener('mouseleave', close);
+		langTrigger.addEventListener('click', (e) => {
+			e.stopPropagation();
+			isOpen() ? close() : open();
+		});
+		document.addEventListener('click', (e) => {
+			const target = e.target;
+			if (target instanceof Node && !langWrap.contains(target)) {
+				close();
+			}
+		});
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') close();
 		});
 	}
 </script>
@@ -269,5 +344,88 @@ const dropdownTriggerSvg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://ww
 	:root[data-theme="dark"] .platform-link-primary:hover,
 	:root[data-theme="dark"] .platform-dropdown-trigger:hover {
 		background: rgba(255, 255, 255, 0.08);
+	}
+
+	/* Language switcher（与平台下拉视觉一致） */
+	.lang-nav {
+		display: flex;
+		align-items: center;
+	}
+	.lang-trigger-wrap {
+		position: relative;
+	}
+	.lang-dropdown-trigger {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		color: rgb(var(--gray-dark));
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		cursor: pointer;
+		transition: background 0.2s, color 0.2s;
+	}
+	.lang-dropdown-trigger:hover {
+		background: rgb(var(--gray-light));
+		color: rgb(var(--black));
+	}
+	.lang-dropdown-trigger[aria-expanded="true"] {
+		background: rgb(var(--gray-light));
+	}
+	.lang-icon {
+		display: inline-flex;
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+	.lang-dropdown {
+		border: 1px solid rgb(var(--gray-light));
+		box-shadow: 0 2px 8px rgba(var(--black), 8%), 0 4px 16px rgba(var(--black), 4%);
+		background: white;
+		list-style: none;
+		margin: 0;
+		padding: 0.25rem 0;
+	}
+	:root[data-theme="dark"] .lang-dropdown {
+		background: #3a3d3d;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		box-shadow: none;
+	}
+	.lang-item {
+		display: block;
+		padding: 0.5rem 1rem;
+		margin: 0.125rem 0.5rem;
+		font-size: 0.875rem;
+		color: rgb(var(--gray-dark));
+		text-decoration: none;
+		border-radius: 4px;
+		transition: background 0.2s, color 0.2s;
+	}
+	.lang-item:hover {
+		background: rgb(var(--gray-light));
+		color: rgb(var(--black));
+	}
+	.lang-item-current {
+		font-weight: 600;
+		color: rgb(var(--black));
+		cursor: default;
+	}
+	:root[data-theme="dark"] .lang-dropdown-trigger {
+		color: rgba(255, 255, 255, 0.7);
+	}
+	:root[data-theme="dark"] .lang-dropdown-trigger:hover,
+	:root[data-theme="dark"] .lang-dropdown-trigger[aria-expanded="true"] {
+		background: rgba(255, 255, 255, 0.08);
+	}
+	:root[data-theme="dark"] .lang-item {
+		color: #e6e6e6;
+	}
+	:root[data-theme="dark"] .lang-item:hover {
+		background: rgba(255, 255, 255, 0.08);
+	}
+	:root[data-theme="dark"] .lang-item-current {
+		color: #e6e6e6;
 	}
 </style>
