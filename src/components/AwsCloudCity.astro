@@ -1,0 +1,1382 @@
+---
+// AWS 云城市（SAA 学习版）：全屏 Three.js 交互页面，不走 PageLayout。
+// 文案数据见 src/data/aws-cloud-city.ts，通过 define:vars 注入运行时脚本。
+// 中日两个语言版本共用 localStorage 键 awsCityLearned，学习进度互通。
+import { getCloudCityData, type CloudCityLocale } from '../data/aws-cloud-city';
+
+interface Props {
+  locale: CloudCityLocale;
+}
+const { locale } = Astro.props;
+
+const data = getCloudCityData(locale);
+const t = data.ui;
+
+const htmlLang = locale === 'ja' ? 'ja' : 'zh-CN';
+const zhPath = '/aws/cloud-city/';
+const jaPath = '/ja/aws/cloud-city/';
+const blogHome = locale === 'ja' ? '/ja/' : '/';
+const canonical = new URL(locale === 'ja' ? jaPath : zhPath, Astro.site);
+const altZh = new URL(zhPath, Astro.site);
+const altJa = new URL(jaPath, Astro.site);
+
+const total = data.services.length;
+const progressInit = t.progressText.replace('{n}', '0').replace('{total}', String(total));
+---
+
+<html lang={htmlLang}>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{t.pageTitle}</title>
+  <meta name="description" content={t.metaDescription} />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="canonical" href={canonical} />
+  <link rel="alternate" hreflang="zh-CN" href={altZh} />
+  <link rel="alternate" hreflang="ja" href={altJa} />
+  <link rel="alternate" hreflang="x-default" href={altZh} />
+</head>
+<body>
+
+<div class="welcome" id="welcome">
+  <div class="welcome-card">
+    <h1>{t.welcomeTitle}</h1>
+    <p set:html={t.welcomeIntro} />
+    <div class="welcome-steps">
+      <div><span>1</span>{t.welcomeStep1}</div>
+      <div><span>2</span>{t.welcomeStep2}</div>
+      <div><span>3</span>{t.welcomeStep3}</div>
+      <div><span>4</span>{t.welcomeStep4}</div>
+    </div>
+    <div class="welcome-btns">
+      <button class="start-btn" onclick="document.getElementById('welcome').style.display='none'; openRoadmap();">{t.welcomeBtnRoadmap}</button>
+      <button class="start-btn secondary" onclick="document.getElementById('welcome').style.display='none'">{t.welcomeBtnEnter}</button>
+    </div>
+  </div>
+</div>
+
+<div id="canvas-wrap"></div>
+
+<div class="top-bar">
+  <div class="title-block">
+    <h1>{t.topTitle} <span style="opacity:0.5;font-weight:400;font-size:13px;">{t.topTitleSuffix}</span></h1>
+    <p>{t.topSubtitle}</p>
+  </div>
+  <div class="top-actions">
+    <div class="lang-pill">
+      <a class="back-link" href={blogHome}>{t.backLabel}</a>
+      <span class="sep">|</span>
+      <a href={zhPath} class={locale === 'zh' ? 'cur' : ''} lang="zh-CN">中文</a>
+      <a href={jaPath} class={locale === 'ja' ? 'cur' : ''} lang="ja">日本語</a>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div id="progress-fill"></div></div>
+      <span id="progress-text">{progressInit}</span>
+    </div>
+    <button class="roadmap-btn" onclick="openRoadmap()">{t.roadmapBtn}</button>
+  </div>
+</div>
+
+<div class="filters" id="filters">
+  <h3>{t.districtFilterHeader}</h3>
+</div>
+
+<div class="legend">
+  <strong>{t.legendTitle}</strong>
+  <div>{t.legendLine1}</div>
+  <div>{t.legendLine2}</div>
+  <div set:html={t.legendLine3} />
+  <div>{t.legendLine4}</div>
+</div>
+
+<div class="info-panel" id="info-panel">
+  <button class="info-close" onclick="closeInfo()">×</button>
+  <div class="info-header">
+    <div class="info-avatar" id="info-avatar"></div>
+    <div>
+      <div class="info-name" id="info-name"></div>
+      <div class="info-cn-name" id="info-cn-name"></div>
+    </div>
+  </div>
+  <div class="info-badges">
+    <span class="badge" id="info-stage"></span>
+    <span class="badge" id="info-weight"></span>
+  </div>
+  <div class="info-section">
+    <h4>{t.infoWhoAmI}</h4>
+    <div class="info-personify" id="info-personify"></div>
+  </div>
+  <div class="info-section">
+    <h4>{t.infoRole}</h4>
+    <div class="info-role" id="info-role"></div>
+  </div>
+  <div class="info-section">
+    <h4>{t.infoExam}</h4>
+    <div class="info-exam" id="info-exam"></div>
+  </div>
+  <div class="info-section">
+    <h4>{t.infoPartners}</h4>
+    <div class="info-related" id="info-related"></div>
+  </div>
+  <button class="learn-btn" id="btn-learned">{t.learnBtnTodo}</button>
+  <div class="info-nav">
+    <button id="btn-prev">{t.btnPrev}</button>
+    <span id="info-pos"></span>
+    <button id="btn-next">{t.btnNext}</button>
+  </div>
+</div>
+
+<div class="roadmap" id="roadmap">
+  <div class="roadmap-inner">
+    <button class="info-close" onclick="closeRoadmap()">×</button>
+    <h2>{t.roadmapTitle}</h2>
+    <p class="roadmap-sub" set:html={t.roadmapSub} />
+    <div class="roadmap-progress">
+      <span id="roadmap-progress-text"></span>
+      <div class="progress-bar"><div id="roadmap-fill"></div></div>
+    </div>
+    <div id="roadmap-stages"></div>
+    <div class="roadmap-tips" set:html={t.roadmapTips} />
+    <button class="roadmap-close-big" onclick="closeRoadmap()">{t.roadmapClose}</button>
+  </div>
+</div>
+
+<div id="hover-tag"></div>
+
+<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script define:vars={{ DATA: data }}>
+// ======================================================
+// 双语数据（由 src/data/aws-cloud-city.ts 注入）
+// ======================================================
+const STAGES = DATA.stages;
+const DISTRICTS = DATA.districts;
+const WEIGHTS = DATA.weights;
+const SERVICES = DATA.services;
+const UI = DATA.ui;
+const fmt = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
+
+// 学习路线（按 order 排序）与本机进度
+const LEARNING_PATH = [...SERVICES].sort((a, b) => a.order - b.order);
+let learned = new Set();
+try { learned = new Set(JSON.parse(localStorage.getItem('awsCityLearned') || '[]')); } catch (e) {}
+function saveLearned() { try { localStorage.setItem('awsCityLearned', JSON.stringify([...learned])); } catch (e) {} }
+
+// ======================================================
+// 场景初始化
+// ======================================================
+const container = document.getElementById('canvas-wrap');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e27);
+scene.fog = new THREE.Fog(0x0a0e27, 40, 160);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 38, 55);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+// --------- 自制轨道控制器 ---------
+class OrbitController {
+  constructor(camera, dom) {
+    this.camera = camera;
+    this.dom = dom;
+    this.target = new THREE.Vector3(0, 0, 0);
+    this.spherical = new THREE.Spherical();
+    this.updateSpherical();
+    this.isDragging = false;
+    this.prevX = 0; this.prevY = 0;
+    this.rotateSpeed = 0.005;
+    this.zoomSpeed = 0.9;
+    this.minDist = 20;
+    this.maxDist = 120;
+    this.minPolar = 0.15;
+    this.maxPolar = Math.PI / 2 - 0.05;
+    this.autoRotate = true;
+    this.autoRotateSpeed = 0.0008;
+    this._attach();
+  }
+  updateSpherical() {
+    const offset = new THREE.Vector3().subVectors(this.camera.position, this.target);
+    this.spherical.setFromVector3(offset);
+  }
+  _attach() {
+    this.dom.addEventListener('mousedown', (e) => {
+      this.isDragging = true; this.autoRotate = false;
+      this.prevX = e.clientX; this.prevY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => this.isDragging = false);
+    window.addEventListener('mousemove', (e) => {
+      if (!this.isDragging) return;
+      const dx = e.clientX - this.prevX;
+      const dy = e.clientY - this.prevY;
+      this.spherical.theta -= dx * this.rotateSpeed;
+      this.spherical.phi -= dy * this.rotateSpeed;
+      this.spherical.phi = Math.max(this.minPolar, Math.min(this.maxPolar, this.spherical.phi));
+      this.prevX = e.clientX; this.prevY = e.clientY;
+    });
+    this.dom.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      this.autoRotate = false;
+      const factor = e.deltaY > 0 ? 1 / this.zoomSpeed : this.zoomSpeed;
+      this.spherical.radius *= factor;
+      this.spherical.radius = Math.max(this.minDist, Math.min(this.maxDist, this.spherical.radius));
+    }, { passive: false });
+
+    // 触摸
+    let lastTouchDist = 0;
+    this.dom.addEventListener('touchstart', (e) => {
+      this.autoRotate = false;
+      if (e.touches.length === 1) {
+        this.isDragging = true;
+        this.prevX = e.touches[0].clientX; this.prevY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastTouchDist = Math.hypot(dx, dy);
+      }
+    }, { passive: true });
+    this.dom.addEventListener('touchend', () => this.isDragging = false);
+    this.dom.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && this.isDragging) {
+        const dx = e.touches[0].clientX - this.prevX;
+        const dy = e.touches[0].clientY - this.prevY;
+        this.spherical.theta -= dx * this.rotateSpeed;
+        this.spherical.phi -= dy * this.rotateSpeed;
+        this.spherical.phi = Math.max(this.minPolar, Math.min(this.maxPolar, this.spherical.phi));
+        this.prevX = e.touches[0].clientX; this.prevY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        if (lastTouchDist > 0) {
+          const factor = lastTouchDist / dist;
+          this.spherical.radius *= factor;
+          this.spherical.radius = Math.max(this.minDist, Math.min(this.maxDist, this.spherical.radius));
+        }
+        lastTouchDist = dist;
+      }
+    }, { passive: true });
+  }
+  update() {
+    if (this.autoRotate && !this.isDragging) {
+      this.spherical.theta -= this.autoRotateSpeed;
+    }
+    const pos = new THREE.Vector3().setFromSpherical(this.spherical).add(this.target);
+    this.camera.position.copy(pos);
+    this.camera.lookAt(this.target);
+  }
+}
+const controls = new OrbitController(camera, renderer.domElement);
+
+// ======================================================
+// 灯光
+// ======================================================
+const ambient = new THREE.AmbientLight(0x6677aa, 0.55);
+scene.add(ambient);
+const hemi = new THREE.HemisphereLight(0x8899ff, 0xff8855, 0.4);
+scene.add(hemi);
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+keyLight.position.set(30, 40, 20);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 1024;
+keyLight.shadow.mapSize.height = 1024;
+keyLight.shadow.camera.left = -60;
+keyLight.shadow.camera.right = 60;
+keyLight.shadow.camera.top = 60;
+keyLight.shadow.camera.bottom = -60;
+keyLight.shadow.camera.near = 1;
+keyLight.shadow.camera.far = 120;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xff9966, 0.3);
+fillLight.position.set(-30, 20, -20);
+scene.add(fillLight);
+
+// ======================================================
+// 星空背景
+// ======================================================
+(function addStars() {
+  const geo = new THREE.BufferGeometry();
+  const pts = [];
+  for (let i = 0; i < 800; i++) {
+    const r = 200 + Math.random() * 50;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 2 - 1);
+    pts.push(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi) * 0.6 + 30,
+      r * Math.sin(phi) * Math.sin(theta)
+    );
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.7 });
+  scene.add(new THREE.Points(geo, mat));
+})();
+
+// ======================================================
+// 中心 AWS 核心平台
+// ======================================================
+(function addCore() {
+  const group = new THREE.Group();
+
+  const baseGeo = new THREE.CylinderGeometry(7, 8, 1.2, 48);
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x232846, roughness: 0.6, metalness: 0.3 });
+  const base = new THREE.Mesh(baseGeo, baseMat);
+  base.position.y = -0.3; base.receiveShadow = true; base.castShadow = true;
+  group.add(base);
+
+  const ringGeo = new THREE.RingGeometry(6.5, 7.3, 60);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff9966, side: THREE.DoubleSide, transparent: true, opacity: 0.55 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.35;
+  group.add(ring);
+
+  const logoGeo = new THREE.IcosahedronGeometry(2, 0);
+  const logoMat = new THREE.MeshStandardMaterial({
+    color: 0xff9966, emissive: 0xff6b35, emissiveIntensity: 0.6,
+    roughness: 0.4, metalness: 0.5
+  });
+  const logo = new THREE.Mesh(logoGeo, logoMat);
+  logo.position.y = 3;
+  logo.castShadow = true;
+  group.add(logo);
+  group.userData.logo = logo;
+
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 512; labelCanvas.height = 128;
+  const ctx = labelCanvas.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0)'; ctx.fillRect(0,0,512,128);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 60px "PingFang SC", "Hiragino Kaku Gothic ProN", -apple-system, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#ff9966'; ctx.shadowBlur = 20;
+  ctx.fillText(UI.coreTitle, 256, 50);
+  ctx.shadowBlur = 0;
+  ctx.font = '28px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillText(UI.coreSubtitle, 256, 100);
+  const labelTex = new THREE.CanvasTexture(labelCanvas);
+  const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true });
+  const label = new THREE.Sprite(labelMat);
+  label.position.y = 7; label.scale.set(8, 2, 1);
+  group.add(label);
+
+  scene.add(group);
+  window._coreGroup = group;
+})();
+
+// ======================================================
+// 地面
+// ======================================================
+(function addGround() {
+  const geo = new THREE.CircleGeometry(100, 64);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x0f1430, roughness: 0.95 });
+  const ground = new THREE.Mesh(geo, mat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  const grid = new THREE.GridHelper(200, 40, 0x1e2552, 0x1a1f42);
+  grid.position.y = -1.95;
+  scene.add(grid);
+})();
+
+// ======================================================
+// 绘制角色脸部（Canvas 纹理）
+// ======================================================
+function makeFaceTexture(emoji, bgColor) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.font = '140px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "EmojiOne Color", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, 128, 140);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  return tex;
+}
+
+// ======================================================
+// 名字牌纹理（含学习顺序编号 + 已学勾）
+// ======================================================
+function makeNameTexture(service) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const district = DISTRICTS[service.district];
+  const colorHex = '#' + new THREE.Color(district.color).getHexString();
+
+  ctx.fillStyle = 'rgba(20,25,50,0.85)';
+  roundRect(ctx, 10, 14, 236, 36, 12);
+  ctx.fill();
+  ctx.strokeStyle = colorHex;
+  ctx.lineWidth = 2;
+  roundRect(ctx, 10, 14, 236, 36, 12);
+  ctx.stroke();
+
+  // 学习顺序编号（阶段配色）
+  const stColor = STAGES[service.stage].color;
+  ctx.fillStyle = stColor;
+  ctx.beginPath(); ctx.arc(32, 32, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 15px -apple-system, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(service.order, 32, 33);
+
+  // 服务名
+  ctx.font = 'bold 20px -apple-system, sans-serif';
+  ctx.fillText(service.name, 134, 33);
+
+  // 已学勾
+  if (learned.has(service.id)) {
+    ctx.fillStyle = '#66bb6a';
+    ctx.beginPath(); ctx.arc(226, 32, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText('✓', 226, 33);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  return tex;
+}
+
+// ======================================================
+// 创建单个角色
+// ======================================================
+function createCharacter(service) {
+  const group = new THREE.Group();
+  const district = DISTRICTS[service.district];
+  const color = district.color;
+
+  // 身体
+  let bodyGeo;
+  switch (service.shape) {
+    case 'box':      bodyGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6); break;
+    case 'cylinder': bodyGeo = new THREE.CylinderGeometry(0.9, 0.9, 1.8, 20); break;
+    case 'sphere':   bodyGeo = new THREE.SphereGeometry(1.0, 20, 16); break;
+    case 'cone':     bodyGeo = new THREE.ConeGeometry(1.0, 1.8, 20); break;
+    default:         bodyGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+  }
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: color, roughness: 0.45, metalness: 0.15,
+    emissive: color, emissiveIntensity: 0.12
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = service.shape === 'cone' ? 0.9 : 0.8;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // 头（带脸的球）
+  const lighterColor = new THREE.Color(color);
+  lighterColor.offsetHSL(0, -0.1, 0.2);
+  const faceBg = '#' + lighterColor.getHexString();
+  const headGeo = new THREE.SphereGeometry(0.8, 24, 20);
+  const headMat = new THREE.MeshStandardMaterial({
+    map: makeFaceTexture(service.face, faceBg),
+    roughness: 0.4, metalness: 0.1
+  });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 2.3;
+  head.castShadow = true;
+  group.add(head);
+
+  // 名字牌（sprite，含编号）
+  const nameMat = new THREE.SpriteMaterial({ map: makeNameTexture(service), transparent: true });
+  const nameSprite = new THREE.Sprite(nameMat);
+  nameSprite.position.y = 3.5;
+  nameSprite.scale.set(3.2, 0.8, 1);
+  group.add(nameSprite);
+
+  group.userData = {
+    service,
+    body, head,
+    floatOffset: Math.random() * Math.PI * 2,
+    baseY: 0,
+    nameSprite,
+    highlighted: false
+  };
+
+  return group;
+}
+
+function updateNameSprite(char) {
+  const sprite = char.userData.nameSprite;
+  if (sprite.material.map) sprite.material.map.dispose();
+  sprite.material.map = makeNameTexture(char.userData.service);
+  sprite.material.needsUpdate = true;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// ======================================================
+// 创建街区（浮岛）
+// ======================================================
+const characters = [];      // 所有角色对象
+const characterMap = {};    // id -> 角色
+const districtGroups = {};  // key -> group
+
+function createDistricts() {
+  const grouped = {};
+  for (const s of SERVICES) {
+    if (!grouped[s.district]) grouped[s.district] = [];
+    grouped[s.district].push(s);
+  }
+
+  const RADIUS = 26;
+  const keys = Object.keys(DISTRICTS);
+
+  for (const key of keys) {
+    const dist = DISTRICTS[key];
+    const services = grouped[key] || [];
+    const angle = (dist.angle * Math.PI) / 180;
+    const cx = Math.cos(angle) * RADIUS;
+    const cz = Math.sin(angle) * RADIUS;
+
+    const group = new THREE.Group();
+    group.position.set(cx, 0, cz);
+
+    const platformRadius = 5 + services.length * 0.4;
+    const platGeo = new THREE.CylinderGeometry(platformRadius, platformRadius * 0.85, 0.6, 32);
+    const platMat = new THREE.MeshStandardMaterial({
+      color: dist.color,
+      roughness: 0.6, metalness: 0.2,
+      emissive: dist.color, emissiveIntensity: 0.08
+    });
+    const platform = new THREE.Mesh(platGeo, platMat);
+    platform.position.y = -0.3;
+    platform.receiveShadow = true;
+    platform.castShadow = true;
+    group.add(platform);
+
+    const baseGeo = new THREE.CylinderGeometry(platformRadius * 0.85, platformRadius * 0.4, 1.5, 32);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: dist.color, roughness: 0.8,
+      emissive: 0x000000,
+      transparent: true, opacity: 0.45
+    });
+    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+    baseMesh.position.y = -1.3;
+    group.add(baseMesh);
+
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 512; labelCanvas.height = 96;
+    const lctx = labelCanvas.getContext('2d');
+    lctx.fillStyle = 'rgba(20,25,50,0.75)';
+    roundRect(lctx, 8, 12, 496, 72, 16);
+    lctx.fill();
+    lctx.strokeStyle = '#' + new THREE.Color(dist.color).getHexString();
+    lctx.lineWidth = 3;
+    roundRect(lctx, 8, 12, 496, 72, 16);
+    lctx.stroke();
+    lctx.fillStyle = '#ffffff';
+    lctx.font = 'bold 36px "PingFang SC", "Hiragino Kaku Gothic ProN", -apple-system, sans-serif';
+    lctx.textAlign = 'center'; lctx.textBaseline = 'middle';
+    lctx.fillText(`${dist.emoji}  ${dist.label}`, 256, 48);
+    const labelTex = new THREE.CanvasTexture(labelCanvas);
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true });
+    const labelSprite = new THREE.Sprite(labelMat);
+    labelSprite.position.y = 6.5;
+    labelSprite.scale.set(6, 1.2, 1);
+    group.add(labelSprite);
+    group.userData.districtLabel = labelSprite;
+
+    const n = services.length;
+    services.forEach((s, i) => {
+      const char = createCharacter(s);
+      if (n === 1) {
+        char.position.set(0, 0, 0);
+      } else {
+        const innerRadius = platformRadius * 0.55;
+        const a = (i / n) * Math.PI * 2;
+        char.position.set(Math.cos(a) * innerRadius, 0, Math.sin(a) * innerRadius);
+        char.lookAt(new THREE.Vector3(0, char.position.y, 0));
+      }
+      char.userData.districtKey = key;
+      char.userData.worldPos = new THREE.Vector3();
+      group.add(char);
+      characters.push(char);
+      characterMap[s.id] = char;
+    });
+
+    group.userData.districtKey = key;
+    group.userData.platform = platform;
+    group.userData.baseY = 0;
+    group.userData.floatOffset = Math.random() * Math.PI * 2;
+
+    scene.add(group);
+    districtGroups[key] = group;
+  }
+}
+createDistricts();
+
+// ======================================================
+// 绘制关系连线
+// ======================================================
+const relationLines = [];
+
+function createRelationLines() {
+  const drawn = new Set();
+  const lineMaterial = new THREE.LineDashedMaterial({
+    color: 0xffd966,
+    transparent: true, opacity: 0.35,
+    dashSize: 0.6, gapSize: 0.4,
+    linewidth: 1
+  });
+
+  for (const service of SERVICES) {
+    const from = characterMap[service.id];
+    if (!from) continue;
+    for (const relId of (service.related || [])) {
+      const to = characterMap[relId];
+      if (!to) continue;
+      const key = [service.id, relId].sort().join('-');
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+
+      const fromPos = new THREE.Vector3();
+      const toPos = new THREE.Vector3();
+      from.getWorldPosition(fromPos);
+      to.getWorldPosition(toPos);
+      fromPos.y += 1.5; toPos.y += 1.5;
+
+      const mid = new THREE.Vector3().addVectors(fromPos, toPos).multiplyScalar(0.5);
+      const dist = fromPos.distanceTo(toPos);
+      mid.y += Math.min(dist * 0.2, 6);
+
+      const curve = new THREE.QuadraticBezierCurve3(fromPos, mid, toPos);
+      const points = curve.getPoints(30);
+      const geo = new THREE.BufferGeometry().setFromPoints(points);
+
+      const line = new THREE.Line(geo, lineMaterial.clone());
+      line.computeLineDistances();
+      line.userData = { from: service.id, to: relId };
+      scene.add(line);
+      relationLines.push(line);
+    }
+  }
+}
+createRelationLines();
+
+// ======================================================
+// 交互：点击/悬停
+// ======================================================
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const hoverTag = document.getElementById('hover-tag');
+let hoveredChar = null;
+let selectedChar = null;
+
+function getIntersectedCharacter(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+
+  const meshes = [];
+  for (const c of characters) {
+    c.traverse(obj => {
+      if (obj.isMesh) { obj.userData.parentChar = c; meshes.push(obj); }
+    });
+  }
+  const hits = raycaster.intersectObjects(meshes, false);
+  if (hits.length) return hits[0].object.userData.parentChar;
+  return null;
+}
+
+renderer.domElement.addEventListener('mousemove', (e) => {
+  const char = getIntersectedCharacter(e);
+  if (char !== hoveredChar) {
+    if (hoveredChar) setCharacterHover(hoveredChar, false);
+    hoveredChar = char;
+    if (hoveredChar) setCharacterHover(hoveredChar, true);
+  }
+  if (char) {
+    const s = char.userData.service;
+    hoverTag.innerHTML = `<strong>${fmt(UI.hoverStation, { n: s.order })} · ${s.name}</strong><span class="tag-cn">${s.label}${learned.has(s.id) ? UI.hoverLearned : ''}</span>`;
+    hoverTag.style.left = e.clientX + 'px';
+    hoverTag.style.top = e.clientY + 'px';
+    hoverTag.classList.add('show');
+    renderer.domElement.style.cursor = 'pointer';
+  } else {
+    hoverTag.classList.remove('show');
+    renderer.domElement.style.cursor = 'default';
+  }
+});
+
+renderer.domElement.addEventListener('click', (e) => {
+  const char = getIntersectedCharacter(e);
+  if (char) {
+    selectCharacter(char);
+  }
+});
+
+function setCharacterHover(char, on) {
+  const s = on ? 1.15 : 1.0;
+  char.userData.body.scale.set(s, s, s);
+  char.userData.head.scale.set(s, s, s);
+}
+
+// ======================================================
+// 详情面板
+// ======================================================
+const infoPanel = document.getElementById('info-panel');
+function selectCharacter(char) {
+  selectedChar = char;
+  const s = char.userData.service;
+  const dist = DISTRICTS[s.district];
+  document.getElementById('info-avatar').textContent = s.face;
+  document.getElementById('info-avatar').style.background = dist.accent + '33';
+  document.getElementById('info-avatar').style.border = `2px solid ${dist.accent}`;
+  document.getElementById('info-name').textContent = s.name;
+  document.getElementById('info-cn-name').textContent = `${s.label} · ${dist.label}`;
+  document.getElementById('info-personify').textContent = s.personify;
+  document.getElementById('info-personify').style.setProperty('--accent', dist.accent);
+  document.getElementById('info-role').textContent = s.role;
+
+  // 学习阶段 + 考试权重徽章
+  const stInfo = STAGES[s.stage];
+  const stageEl = document.getElementById('info-stage');
+  stageEl.textContent = fmt(UI.stageBadge, { order: s.order, stage: s.stage, name: stInfo.name });
+  stageEl.style.borderColor = stInfo.color;
+  stageEl.style.color = stInfo.color;
+  stageEl.style.background = stInfo.color + '22';
+  const wEl = document.getElementById('info-weight');
+  const w = WEIGHTS[s.weight] || { label: s.weight, color: '#9e9e9e' };
+  wEl.textContent = 'SAA ' + w.label;
+  wEl.style.borderColor = w.color;
+  wEl.style.color = w.color;
+  wEl.style.background = w.color + '22';
+
+  // 考试要点
+  document.getElementById('info-exam').textContent = s.exam;
+  document.getElementById('info-pos').textContent = `${s.order} / ${SERVICES.length}`;
+  updateLearnBtn(s);
+
+  const relDiv = document.getElementById('info-related');
+  relDiv.innerHTML = '';
+  for (const rid of (s.related || [])) {
+    const rs = SERVICES.find(x => x.id === rid);
+    if (!rs) continue;
+    const chip = document.createElement('div');
+    chip.className = 'related-chip';
+    chip.textContent = `${rs.face} ${rs.name}`;
+    chip.onclick = () => {
+      const target = characterMap[rid];
+      if (target) selectCharacter(target);
+    };
+    relDiv.appendChild(chip);
+  }
+  infoPanel.classList.add('open');
+  highlightRelatedLines(s.id);
+
+  const targetPos = new THREE.Vector3();
+  char.getWorldPosition(targetPos);
+  controls.target.lerp(targetPos, 0.35);
+  controls.autoRotate = false;
+}
+function closeInfo() {
+  infoPanel.classList.remove('open');
+  selectedChar = null;
+  resetLines();
+  controls.target.lerp(new THREE.Vector3(0,0,0), 1);
+}
+window.closeInfo = closeInfo;
+
+function highlightRelatedLines(id) {
+  for (const line of relationLines) {
+    const involved = line.userData.from === id || line.userData.to === id;
+    line.material.color.setHex(involved ? 0xff9966 : 0x444a70);
+    line.material.opacity = involved ? 0.95 : 0.1;
+    line.material.needsUpdate = true;
+  }
+  const related = new Set([id]);
+  const service = SERVICES.find(s => s.id === id);
+  if (service) for (const r of (service.related || [])) related.add(r);
+  for (const c of characters) {
+    const isRel = related.has(c.userData.service.id);
+    c.userData.body.material.opacity = isRel ? 1.0 : 0.25;
+    c.userData.head.material.opacity = isRel ? 1.0 : 0.3;
+    c.userData.body.material.transparent = true;
+    c.userData.head.material.transparent = true;
+  }
+}
+function resetLines() {
+  for (const line of relationLines) {
+    line.material.color.setHex(0xffd966);
+    line.material.opacity = 0.35;
+    line.material.needsUpdate = true;
+  }
+  for (const c of characters) {
+    c.userData.body.material.opacity = 1.0;
+    c.userData.head.material.opacity = 1.0;
+  }
+}
+
+// ======================================================
+// 学习进度 & 已学标记
+// ======================================================
+function updateProgress() {
+  document.getElementById('progress-text').textContent = fmt(UI.progressText, { n: learned.size, total: SERVICES.length });
+  document.getElementById('progress-fill').style.width = (learned.size / SERVICES.length * 100) + '%';
+}
+function updateLearnBtn(s) {
+  const btn = document.getElementById('btn-learned');
+  const done = learned.has(s.id);
+  btn.textContent = done ? UI.learnBtnDone : UI.learnBtnTodo;
+  btn.classList.toggle('learned', done);
+}
+document.getElementById('btn-learned').addEventListener('click', () => {
+  if (!selectedChar) return;
+  const s = selectedChar.userData.service;
+  if (learned.has(s.id)) learned.delete(s.id); else learned.add(s.id);
+  saveLearned();
+  updateLearnBtn(s);
+  updateProgress();
+  updateNameSprite(selectedChar);
+});
+
+// 上一站 / 下一站（沿学习路线）
+function navRelative(d) {
+  let idx = 0;
+  if (selectedChar) {
+    const o = selectedChar.userData.service.order;
+    idx = LEARNING_PATH.findIndex(s => s.order === o) + d;
+    if (idx < 0) idx = LEARNING_PATH.length - 1;
+    if (idx >= LEARNING_PATH.length) idx = 0;
+  }
+  const target = characterMap[LEARNING_PATH[idx].id];
+  if (target) selectCharacter(target);
+}
+document.getElementById('btn-prev').addEventListener('click', () => navRelative(-1));
+document.getElementById('btn-next').addEventListener('click', () => navRelative(1));
+
+// ======================================================
+// 学习路线图面板
+// ======================================================
+function renderRoadmap() {
+  const wrap = document.getElementById('roadmap-stages');
+  wrap.innerHTML = '';
+  for (let st = 1; st <= 4; st++) {
+    const info = STAGES[st];
+    const svcs = LEARNING_PATH.filter(s => s.stage === st);
+    const doneCount = svcs.filter(s => learned.has(s.id)).length;
+
+    const block = document.createElement('div');
+    block.className = 'stage-block';
+    block.innerHTML =
+      `<div class="stage-head">` +
+        `<div class="stage-num" style="background:${info.color}33;border:2px solid ${info.color};color:${info.color}">${st}</div>` +
+        `<h3>${info.name} <span class="stage-meta">${fmt(UI.roadmapStageMeta, { weeks: info.weeks, done: doneCount, total: svcs.length })}</span></h3>` +
+      `</div>` +
+      `<div class="stage-desc">${info.desc}</div>` +
+      `<div class="stage-goal">${info.goal}</div>`;
+
+    const chipWrap = document.createElement('div');
+    chipWrap.className = 'stage-services';
+    for (const s of svcs) {
+      const chip = document.createElement('div');
+      chip.className = 'svc-chip' + (learned.has(s.id) ? ' done' : '');
+      let html = `<span class="num">${s.order}</span>${s.face} ${s.name}`;
+      if (s.weight === 'core') html += ` <span class="hot">${UI.hotBadge}</span>`;
+      if (learned.has(s.id)) html += ` <span class="check">✓</span>`;
+      chip.innerHTML = html;
+      chip.title = `${s.label} · SAA ${WEIGHTS[s.weight].label}`;
+      chip.onclick = () => {
+        closeRoadmap();
+        const c = characterMap[s.id];
+        if (c) selectCharacter(c);
+      };
+      chipWrap.appendChild(chip);
+    }
+    block.appendChild(chipWrap);
+    wrap.appendChild(block);
+
+    if (st < 4) {
+      const arrow = document.createElement('div');
+      arrow.className = 'stage-arrow';
+      arrow.textContent = '↓';
+      wrap.appendChild(arrow);
+    }
+  }
+  document.getElementById('roadmap-progress-text').textContent = fmt(UI.roadmapTotal, { n: learned.size, total: SERVICES.length });
+  document.getElementById('roadmap-fill').style.width = (learned.size / SERVICES.length * 100) + '%';
+}
+function openRoadmap() {
+  renderRoadmap();
+  document.getElementById('roadmap').classList.add('open');
+}
+function closeRoadmap() {
+  document.getElementById('roadmap').classList.remove('open');
+}
+window.openRoadmap = openRoadmap;
+window.closeRoadmap = closeRoadmap;
+
+// ======================================================
+// 街区 + 学习阶段筛选器
+// ======================================================
+const filtersDiv = document.getElementById('filters');
+const allBtn = document.createElement('button');
+allBtn.className = 'filter-btn active';
+allBtn.dataset.key = 'all';
+allBtn.innerHTML = `<span class="dot" style="background:linear-gradient(135deg,#ff9966,#7c5fff);"></span>${UI.allDistricts}`;
+filtersDiv.appendChild(allBtn);
+
+for (const [key, d] of Object.entries(DISTRICTS)) {
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  btn.dataset.key = key;
+  const hex = '#' + new THREE.Color(d.color).getHexString();
+  btn.innerHTML = `<span class="dot" style="background:${hex};"></span>${d.label}`;
+  filtersDiv.appendChild(btn);
+}
+
+// 学习阶段筛选
+const stageHeader = document.createElement('h3');
+stageHeader.textContent = UI.stageFilterHeader;
+stageHeader.style.marginTop = '10px';
+filtersDiv.appendChild(stageHeader);
+for (let st = 1; st <= 4; st++) {
+  const info = STAGES[st];
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  btn.dataset.stage = st;
+  btn.innerHTML = `<span class="dot" style="background:${info.color};"></span>${fmt(UI.stageFilterItem, { n: st, name: info.name })}`;
+  filtersDiv.appendChild(btn);
+}
+
+filtersDiv.addEventListener('click', (e) => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  for (const b of filtersDiv.querySelectorAll('.filter-btn')) b.classList.remove('active');
+  btn.classList.add('active');
+  if (btn.dataset.stage) {
+    applyStageFilter(parseInt(btn.dataset.stage));
+  } else {
+    applyFilter(btn.dataset.key);
+  }
+});
+
+function applyFilter(key) {
+  for (const [k, g] of Object.entries(districtGroups)) {
+    const match = (key === 'all') || (k === key);
+    g.traverse(obj => {
+      if (obj.isMesh && obj.material) {
+        obj.material.transparent = true;
+        obj.material.opacity = match ? 1.0 : 0.15;
+      }
+      if (obj.isSprite && obj.material) {
+        obj.material.opacity = match ? 1.0 : 0.2;
+      }
+    });
+  }
+  for (const line of relationLines) {
+    let involved = true;
+    if (key !== 'all') {
+      const fromDist = characterMap[line.userData.from]?.userData.districtKey;
+      const toDist = characterMap[line.userData.to]?.userData.districtKey;
+      involved = (fromDist === key || toDist === key);
+    }
+    line.material.opacity = involved ? 0.6 : 0.05;
+    line.material.needsUpdate = true;
+  }
+  if (key !== 'all') {
+    const g = districtGroups[key];
+    const target = new THREE.Vector3();
+    g.getWorldPosition(target);
+    controls.target.lerp(target, 1);
+  } else {
+    controls.target.lerp(new THREE.Vector3(0,0,0), 1);
+  }
+}
+
+function applyStageFilter(stage) {
+  // 先恢复所有，再按阶段暗化角色
+  applyFilter('all');
+  for (const c of characters) {
+    const match = c.userData.service.stage === stage;
+    c.traverse(obj => {
+      if (obj.isMesh && obj.material) {
+        obj.material.transparent = true;
+        obj.material.opacity = match ? 1.0 : 0.12;
+      }
+      if (obj.isSprite && obj.material) {
+        obj.material.opacity = match ? 1.0 : 0.15;
+      }
+    });
+  }
+  for (const line of relationLines) {
+    const f = characterMap[line.userData.from]?.userData.service.stage;
+    const t = characterMap[line.userData.to]?.userData.service.stage;
+    const involved = (f === stage && t === stage);
+    line.material.opacity = involved ? 0.6 : 0.05;
+    line.material.needsUpdate = true;
+  }
+  controls.target.lerp(new THREE.Vector3(0, 0, 0), 1);
+}
+
+// ======================================================
+// 初始化进度显示
+// ======================================================
+updateProgress();
+
+// ======================================================
+// 动画循环
+// ======================================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  for (const [key, g] of Object.entries(districtGroups)) {
+    g.position.y = Math.sin(t * 0.5 + g.userData.floatOffset) * 0.3;
+    g.traverse(obj => {
+      if (obj.userData && obj.userData.service) {
+        obj.position.y = Math.sin(t * 1.2 + obj.userData.floatOffset) * 0.15;
+        if (obj.userData.head) {
+          obj.userData.head.rotation.y = Math.sin(t * 0.8 + obj.userData.floatOffset) * 0.12;
+        }
+      }
+    });
+  }
+
+  if (window._coreGroup && window._coreGroup.userData.logo) {
+    window._coreGroup.userData.logo.rotation.y = t * 0.6;
+    window._coreGroup.userData.logo.rotation.x = t * 0.3;
+    window._coreGroup.userData.logo.position.y = 3 + Math.sin(t * 1.2) * 0.2;
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ======================================================
+// 响应窗口大小
+// ======================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+<style is:global>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, "PingFang SC", "Hiragino Kaku Gothic ProN", "Microsoft YaHei", "Yu Gothic UI", Meiryo, sans-serif; background: #0a0e27; color: #fff; }
+  #canvas-wrap { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* 顶部标题 */
+  .top-bar {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 14px 20px; z-index: 10;
+    background: linear-gradient(180deg, rgba(10,14,39,0.85) 0%, rgba(10,14,39,0) 100%);
+    display: flex; align-items: center; justify-content: space-between;
+    pointer-events: none;
+  }
+  .title-block { pointer-events: auto; }
+  .title-block h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
+  .title-block p { font-size: 12px; opacity: 0.65; margin-top: 2px; }
+
+  /* 进度 + 路线图按钮 + 语言切换 */
+  .top-actions { display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+  .lang-pill {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(20,25,50,0.6); border: 1px solid rgba(255,255,255,0.1);
+    padding: 7px 14px; border-radius: 20px; backdrop-filter: blur(10px);
+    font-size: 12px; white-space: nowrap;
+  }
+  .lang-pill a { color: #fff; opacity: 0.6; text-decoration: none; transition: opacity .2s; }
+  .lang-pill a:hover { opacity: 1; }
+  .lang-pill a.cur { opacity: 1; font-weight: 600; pointer-events: none; }
+  .lang-pill .sep { opacity: 0.25; }
+  .progress-wrap {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(20,25,50,0.6); border: 1px solid rgba(255,255,255,0.1);
+    padding: 7px 14px; border-radius: 20px; backdrop-filter: blur(10px);
+  }
+  .progress-bar { width: 110px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+  #progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#66bb6a,#4ecdc4); border-radius: 3px; transition: width .4s; }
+  .progress-wrap span { font-size: 12px; opacity: 0.85; white-space: nowrap; }
+  .roadmap-btn {
+    background: linear-gradient(135deg,#ff9966,#7c5fff); border: none; color: #fff;
+    padding: 9px 18px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    font-weight: 500; transition: transform .2s; white-space: nowrap;
+  }
+  .roadmap-btn:hover { transform: scale(1.05); }
+
+  /* 分类过滤器 */
+  .filters {
+    position: fixed; top: 70px; left: 20px; z-index: 10;
+    display: flex; flex-direction: column; gap: 6px;
+    background: rgba(20,25,50,0.6);
+    backdrop-filter: blur(12px);
+    padding: 12px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    max-width: 180px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
+  .filters::-webkit-scrollbar { width: 4px; }
+  .filters::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+  .filters h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; margin-bottom: 6px; }
+  .filter-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; color: #fff;
+    background: transparent; border: none;
+    transition: all 0.2s; text-align: left; width: 100%;
+  }
+  .filter-btn:hover { background: rgba(255,255,255,0.08); }
+  .filter-btn.active { background: rgba(255,255,255,0.12); }
+  .filter-btn .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* 详情面板 */
+  .info-panel {
+    position: fixed; right: 20px; top: 70px; bottom: 20px; width: 380px;
+    background: rgba(20,25,50,0.78);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 20px;
+    z-index: 10;
+    overflow-y: auto;
+    transform: translateX(calc(100% + 30px));
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .info-panel.open { transform: translateX(0); }
+  .info-panel::-webkit-scrollbar { width: 4px; }
+  .info-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+  .info-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+    padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .info-avatar {
+    width: 54px; height: 54px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; flex-shrink: 0;
+  }
+  .info-name { font-size: 18px; font-weight: 600; }
+  .info-cn-name { font-size: 13px; opacity: 0.7; margin-top: 2px; }
+  .info-close {
+    position: absolute; top: 14px; right: 14px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); border: none; color: #fff;
+    cursor: pointer; font-size: 16px; line-height: 1; z-index: 5;
+  }
+  .info-close:hover { background: rgba(255,255,255,0.15); }
+
+  /* 徽章 */
+  .info-badges { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .badge { font-size: 12px; padding: 4px 12px; border-radius: 12px; border: 1px solid; font-weight: 500; }
+
+  .info-section { margin-bottom: 16px; }
+  .info-section h4 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    opacity: 0.5; margin-bottom: 8px;
+  }
+  .info-personify {
+    padding: 14px; background: rgba(255,255,255,0.05);
+    border-radius: 10px; border-left: 3px solid var(--accent, #4ecdc4);
+    font-size: 14px; line-height: 1.7; font-style: italic;
+  }
+  .info-personify::before { content: "“"; margin-right: 2px; opacity: 0.4; font-size: 18px; }
+  .info-personify::after { content: "”"; margin-left: 2px; opacity: 0.4; font-size: 18px; }
+  .info-role { font-size: 14px; line-height: 1.7; opacity: 0.9; }
+  .info-exam {
+    padding: 14px; background: rgba(255,179,0,0.08);
+    border-radius: 10px; border-left: 3px solid #ffb300;
+    font-size: 13px; line-height: 1.75;
+  }
+  .info-related { display: flex; flex-wrap: wrap; gap: 6px; }
+  .related-chip {
+    padding: 4px 10px; border-radius: 12px; font-size: 12px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .related-chip:hover { background: rgba(255,255,255,0.15); }
+
+  /* 学习按钮与导航 */
+  .learn-btn {
+    width: 100%; padding: 11px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06); color: #fff;
+    font-size: 14px; cursor: pointer; transition: all .2s; margin-bottom: 10px;
+  }
+  .learn-btn:hover { background: rgba(255,255,255,0.12); }
+  .learn-btn.learned { background: rgba(102,187,106,0.2); border-color: #66bb6a; color: #a5d6a7; }
+  .info-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .info-nav button {
+    flex: 1; padding: 9px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06); color: #fff;
+    font-size: 13px; cursor: pointer; transition: all .2s;
+  }
+  .info-nav button:hover { background: rgba(255,255,255,0.14); }
+  .info-nav span { font-size: 12px; opacity: 0.6; white-space: nowrap; }
+
+  /* 底部图例 */
+  .legend {
+    position: fixed; bottom: 20px; left: 20px; z-index: 10;
+    background: rgba(20,25,50,0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 12px 16px; border-radius: 12px;
+    font-size: 12px; opacity: 0.9; max-width: 270px;
+  }
+  .legend strong { font-weight: 600; display: block; margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+  .legend div { line-height: 1.6; opacity: 0.75; }
+
+  /* 悬浮标签 */
+  #hover-tag {
+    position: fixed; pointer-events: none;
+    background: rgba(20,25,50,0.9);
+    padding: 6px 12px; border-radius: 8px;
+    font-size: 13px; z-index: 20;
+    border: 1px solid rgba(255,255,255,0.15);
+    transform: translate(-50%, calc(-100% - 12px));
+    opacity: 0; transition: opacity 0.15s;
+    backdrop-filter: blur(10px);
+    white-space: nowrap;
+  }
+  #hover-tag.show { opacity: 1; }
+  #hover-tag .tag-cn { opacity: 0.7; font-size: 11px; margin-left: 4px; }
+
+  /* 学习路线图全屏面板 */
+  .roadmap {
+    position: fixed; inset: 0; z-index: 90;
+    background: rgba(10,14,39,0.95);
+    backdrop-filter: blur(16px);
+    display: none; overflow-y: auto;
+  }
+  .roadmap.open { display: block; animation: fadeIn 0.3s; }
+  .roadmap-inner { max-width: 860px; margin: 0 auto; padding: 44px 24px 70px; position: relative; }
+  .roadmap-inner h2 {
+    font-size: 26px; font-weight: 600;
+    background: linear-gradient(135deg, #ff9966, #ff6e7f, #7c5fff);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+  }
+  .roadmap-sub { font-size: 13px; opacity: 0.7; margin: 8px 0 16px; line-height: 1.6; }
+  .roadmap-progress {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 22px;
+    background: rgba(20,25,50,0.6); border: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 16px; border-radius: 12px;
+  }
+  .roadmap-progress .progress-bar { flex: 1; width: auto; height: 8px; border-radius: 4px; }
+  #roadmap-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#66bb6a,#4ecdc4); border-radius: 4px; transition: width .4s; }
+  .roadmap-progress span { font-size: 13px; white-space: nowrap; }
+
+  .stage-block {
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+    margin-bottom: 4px; background: rgba(20,25,50,0.6); overflow: hidden;
+  }
+  .stage-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 8px; }
+  .stage-num {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+  }
+  .stage-head h3 { font-size: 16px; font-weight: 600; }
+  .stage-head .stage-meta { font-size: 12px; opacity: 0.6; font-weight: 400; }
+  .stage-desc { font-size: 13px; opacity: 0.75; padding: 6px 18px 10px; line-height: 1.65; }
+  .stage-goal { font-size: 12px; padding: 0 18px 10px; line-height: 1.6; color: #ffd980; opacity: 0.9; }
+  .stage-services { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 18px; }
+  .svc-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 13px; border-radius: 18px;
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+    font-size: 13px; cursor: pointer; transition: all 0.2s;
+  }
+  .svc-chip:hover { background: rgba(255,255,255,0.16); transform: translateY(-1px); }
+  .svc-chip.done { border-color: #66bb6a; background: rgba(102,187,106,0.15); }
+  .svc-chip .num {
+    font-size: 11px; width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.12); flex-shrink: 0;
+  }
+  .svc-chip .check { color: #66bb6a; font-weight: 700; }
+  .svc-chip .hot { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: rgba(255,82,82,0.2); color: #ff8a80; }
+  .stage-arrow { text-align: center; font-size: 20px; opacity: 0.4; margin: 4px 0 8px; }
+  .roadmap-tips {
+    margin-top: 24px; padding: 18px 20px;
+    background: rgba(124,95,255,0.1); border: 1px solid rgba(124,95,255,0.3);
+    border-radius: 12px; font-size: 13px; line-height: 1.9;
+  }
+  .roadmap-tips strong { display: block; margin-bottom: 6px; font-size: 14px; }
+  .roadmap-close-big {
+    display: block; margin: 26px auto 0;
+    padding: 11px 34px; border-radius: 24px; border: none;
+    background: linear-gradient(135deg, #ff9966, #7c5fff);
+    color: #fff; font-size: 15px; cursor: pointer; transition: transform .2s;
+  }
+  .roadmap-close-big:hover { transform: scale(1.04); }
+
+  /* 欢迎提示 */
+  .welcome {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10,14,39,0.92);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(20px);
+    animation: fadeIn 0.4s;
+  }
+  @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
+  .welcome-card {
+    max-width: 500px; padding: 32px; text-align: center;
+    background: rgba(30,35,60,0.8);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+  }
+  .welcome-card h1 {
+    font-size: 26px; font-weight: 600; margin-bottom: 10px;
+    background: linear-gradient(135deg, #ff9966, #ff6e7f, #7c5fff);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .welcome-card p { font-size: 14px; line-height: 1.7; opacity: 0.85; margin-bottom: 14px; }
+  .welcome-steps {
+    text-align: left; background: rgba(0,0,0,0.3);
+    padding: 14px 18px; border-radius: 10px; margin: 14px 0;
+    font-size: 13px; line-height: 1.9;
+  }
+  .welcome-steps span { display: inline-block; width: 22px; height: 22px; background: rgba(255,255,255,0.15); border-radius: 50%; text-align: center; line-height: 22px; margin-right: 8px; font-size: 11px; flex-shrink: 0; }
+  .welcome-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .start-btn {
+    padding: 10px 24px; border-radius: 24px; border: none;
+    background: linear-gradient(135deg, #ff9966, #7c5fff);
+    color: #fff; font-size: 15px; font-weight: 500; cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .start-btn:hover { transform: scale(1.04); }
+  .start-btn.secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+
+  @media (max-width: 760px) {
+    .info-panel { width: calc(100% - 40px); top: auto; bottom: 20px; height: 50vh; }
+    .filters { max-width: 140px; padding: 8px; }
+    .legend { display: none; }
+    .top-actions { flex-direction: column; align-items: flex-end; gap: 6px; }
+    .roadmap-inner { padding: 30px 14px 60px; }
+  }
+</style>
+</body>
+</html>
