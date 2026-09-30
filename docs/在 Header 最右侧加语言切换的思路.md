@@ -43,8 +43,7 @@ my-astro-blog/
 │   └── type.ts              # 共享类型
 ├── tools/
 │   └── publishers/          # 文章同步到外部平台的发布脚本
-│       ├── qiita_publishers.ts
-│       └── x_publishers.ts
+│       └── qiita_publishers.ts
 ├── astro.config.mjs         # Astro 与集成配置（含 Vite、MDX、Sitemap 等）
 ├── package.json / pnpm-lock.yaml
 └── tsconfig.json
@@ -55,7 +54,7 @@ my-astro-blog/
 - **项目名称与定位**：my-astro-blog，基于 Astro 的静态博客，Markdown 写作、通过 GitHub Actions 构建与部署，作为内容的 Single Source of Truth。
 - **技术栈**：Astro（SSG）、pnpm 包管理、Tailwind 4、MDX、Sitemap；**已配置 Astro 内置 i18n**（`astro.config.mjs` 中 `locales: ['zh','ja','en']`，`defaultLocale: 'zh'`，`prefixDefaultLocale: false`）。当前使用 **legacy content collections**（`src/content/config.ts` + `astro.config.mjs` 的 `legacy.collections: true`），以规避 Windows 下非 ASCII 路径的 content 扫描问题。
 - **内容规范**：博文按 AGENTS.md 约定组织——纯文短文可单文件放在 `blog/` 下；带图文章使用「文章-slug 目录 + index.md」；系列/教程可用多章节目录，每章独立 `index.md`。内容集合在 `src/content/config.ts` 中定义，当前有 `blog`（中文）、`blog_ja`（日文），二者 schema 均含 `canonicalId`，用于同文章多语言对应。
-- **发布平台**：对外发布目标在 `src/consts.ts` 的 `PUBLISH_PLATFORMS` 中定义（当前含 `x`、`qiita`），对应 `tools/publishers/` 下的发布逻辑；站内 Header 右侧会展示这些平台链接。
+- **发布平台**：对外发布目标在 `src/consts.ts` 的 `PUBLISH_PLATFORMS` 中定义（当前含 `qiita`），对应 `tools/publishers/` 下的发布逻辑；站内 Header 右侧会展示这些平台链接。
 - **界面与体验**：全站响应式、支持浏览器 dark 模式；Card 略亮于 Body，Header/Footer 与 Body 保持清晰边界（见 AGENTS.md「关于ダーク模式」）。
 - **多语言目标**：AGENTS 要求站内支持中文、日文、英文。**当前进度**：i18n 路由已配置；中文沿用根路径（`/`、`/blog/xxx/`），日文已有 `src/pages/ja/`（`/ja/`、`/ja/blog/xxx/`），日文 collection `blog_ja` 已接入且与中文通过 `canonicalId` 对应；英文尚无 `/en` 页面与 `blog_en`。Header 尚未加入语言切换，PageLayout 的 `<html lang>` 仍写死。本文档后续章节在此背景下讨论「在 Header 最右侧加语言切换」的现状、思路与定稿方案。
 

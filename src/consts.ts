@@ -7,7 +7,6 @@ export const SITE_DESCRIPTION = 'Building, documenting, and thinking in public.'
 
 // 当修改发布平台的时候，请同时修改 tools/publisher中的发布函数定义
 export const PUBLISH_PLATFORMS = [
-    'x',
     'qiita'
 ];
 
