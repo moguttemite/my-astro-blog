@@ -1,0 +1,1322 @@
+---
+// /workout/：手机上看「今天该做哪些运动」的独立页面（不走 PageLayout，与 AwsCloudCity 同样的做法）。
+// - 「今天」在浏览器里按东京时间计算，静态构建不会把日期写死。
+// - 计划数据：src/data/workout-v2.ts；每周会变的状态：src/data/workout-state.ts。
+// - 个人用途：noindex，并在 astro.config.mjs 的 sitemap filter 中排除；只做中文。
+import {
+  PLAN,
+  SAFETY,
+  MISSED_RULES,
+  TRAFFIC_LIGHT,
+  PROGRESS_RULES,
+} from '../data/workout-v2';
+import { WORKOUT_STATE } from '../data/workout-state';
+---
+
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>今日训练</title>
+    <meta name="description" content="今天该做哪些运动，以及每个动作的细节。" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#eef2f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111715" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="今日训练" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body data-kind="before">
+    <header class="topbar">
+      <a class="back" href="/">博客首页</a>
+      <button id="wake" class="wake" type="button" aria-pressed="false" hidden>屏幕常亮</button>
+    </header>
+
+    <main class="wrap">
+      <p id="preview" class="note note-info" hidden></p>
+
+      <section class="hero" aria-live="polite">
+        <div class="glyph" id="glyph" aria-hidden="true">·</div>
+        <div class="hero-text">
+          <p class="hero-date" id="hero-date"></p>
+          <h1 id="hero-title">今日训练</h1>
+          <p class="hero-sub" id="hero-sub"></p>
+          <p class="hero-time" id="hero-time" hidden></p>
+          <button id="back-today" class="link-btn" type="button" hidden>回到今天</button>
+        </div>
+      </section>
+
+      <nav class="week" id="week" aria-label="本周安排"></nav>
+
+      <div id="alerts"></div>
+      <div id="versions" class="versions" role="group" aria-label="执行版本" hidden></div>
+      <div id="todo"></div>
+      <div id="content"></div>
+      <div id="log"></div>
+
+      <noscript>
+        <p class="note note-warn">这个页面需要 JavaScript 才能算出今天的内容。口诀：{PLAN.motto}</p>
+      </noscript>
+
+      <section class="block safety" aria-labelledby="safety-h">
+        <h2 id="safety-h">安全底线</h2>
+        <p class="safety-stop">{SAFETY.stop}</p>
+        <p class="safety-emergency">{SAFETY.emergency}</p>
+        <ul class="plain">
+          {SAFETY.lines.map((l) => <li>{l}</li>)}
+          <li>{SAFETY.pain}</li>
+        </ul>
+        <p class="small">{SAFETY.normal}{SAFETY.banned}</p>
+      </section>
+
+      <details class="block rules">
+        <summary><h2>漏练、三色灯和升级规则</h2></summary>
+        <h3>漏练</h3>
+        <ol class="plain-ol">
+          {MISSED_RULES.map((r) => <li>{r}</li>)}
+        </ol>
+        <h3>周日三色灯（只看 A/B 日的「标准」＋「1组版」次数）</h3>
+        <ul class="lights">
+          {TRAFFIC_LIGHT.map((t) => <li class={`light light-${t.color}`}>{t.text}</li>)}
+        </ul>
+        <h3>加组和升级</h3>
+        <ol class="plain-ol">
+          {PROGRESS_RULES.map((r) => <li>{r}</li>)}
+        </ol>
+        <p class="small">换日只有一条：周六有安排，A 提前到周五、周五的恢复移到周六；周五也做不了就算漏练，不补。</p>
+      </details>
+
+      <footer class="foot">
+        <p>
+          打开 Notion：
+          <a href={PLAN.notion.plan}>计划全文</a>
+          <a href={PLAN.notion.log}>训练日志</a>
+          <a href={PLAN.notion.levels}>动作等级</a>
+          <a href={PLAN.notion.review}>周回顾</a>
+        </p>
+        <p class="small">等级和组数更新于 {WORKOUT_STATE.updatedAt}，周日回顾后改 src/data/workout-state.ts。</p>
+      </footer>
+    </main>
+
+    <div class="timer" id="timer" hidden>
+      <div class="timer-track"><i id="timer-fill"></i></div>
+      <div class="timer-row">
+        <div class="timer-text">
+          <span id="timer-label"></span>
+          <strong id="timer-time" role="timer">0:00</strong>
+        </div>
+        <button id="timer-add" type="button">加 15 秒</button>
+        <button id="timer-stop" type="button">停止</button>
+      </div>
+    </div>
+
+    <script>
+      import {
+        PLAN,
+        EXERCISES,
+        TEMPLATE_A,
+        TEMPLATE_B,
+        TEMPLATE_B_SWAPPED,
+        WARMUP,
+        WARMUP_SHORT,
+        COOLDOWN,
+        COOLDOWN_SHORT,
+        RECOVERY,
+        STRENGTH_RULES,
+        STRENGTH_DONE,
+        WALK_PACE,
+        WEEKLY_REVIEW,
+        PHASES,
+        WALK_MIN,
+        LONG_WALK_MIN,
+        MEASURE,
+        mainIntensity,
+        phaseIndex,
+        type ExerciseId,
+        type TimedStep,
+      } from '../data/workout-v2';
+      import { WORKOUT_STATE } from '../data/workout-state';
+      import {
+        dayInfo,
+        tokyoToday,
+        isYmd,
+        addDays,
+        weekDates,
+        formatCnDate,
+        WEEKDAY_CN,
+        type DayKind,
+        type DayInfo,
+      } from '../utils/workout-day';
+
+      type Version = 'std' | 'one' | 'min' | 'five' | 'short' | 'rest';
+
+      const $ = (id: string) => document.getElementById(id) as HTMLElement;
+
+      // ---------- 浏览器存储：只存本机的勾选状态，读写失败时页面照常工作 ----------
+      const store = {
+        get(k: string): string | null {
+          try {
+            return localStorage.getItem(k);
+          } catch {
+            return null;
+          }
+        },
+        set(k: string, v: string | null) {
+          try {
+            if (v === null) localStorage.removeItem(k);
+            else localStorage.setItem(k, v);
+          } catch {
+            /* 无痕模式等情况下忽略 */
+          }
+        },
+        obj(k: string): Record<string, boolean> {
+          try {
+            const v = JSON.parse(localStorage.getItem(k) || '{}');
+            return v && typeof v === 'object' ? v : {};
+          } catch {
+            return {};
+          }
+        },
+      };
+
+      const esc = (s: string) =>
+        s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+      const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(n || lo)));
+
+      const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+
+      const md = (ymd: string) => {
+        const [, m, d] = ymd.split('-').map(Number);
+        return `${m}月${d}日`;
+      };
+
+      // ---------- 今天 ----------
+      const params = new URLSearchParams(location.search);
+      const paramDate = params.get('date');
+      const realToday = tokyoToday();
+      const today = isYmd(paramDate) ? paramDate : realToday;
+      let view = today;
+
+      // ---------- 周六换日：周五做 A、周六做恢复 ----------
+      const swapKey = (satYmd: string) => `wk-swap-${satYmd}`;
+
+      function effective(info: DayInfo): { kind: DayKind; swapped: boolean } {
+        if (info.week >= 1) {
+          if (info.dow === 5 && store.get(swapKey(addDays(info.ymd, 1))) === '1') return { kind: 'A', swapped: true };
+          if (info.dow === 6 && store.get(swapKey(info.ymd)) === '1') return { kind: 'recovery', swapped: true };
+        }
+        return { kind: info.kind, swapped: false };
+      }
+
+      const GLYPH: Record<DayKind, string> = {
+        A: 'A',
+        B: 'B',
+        walk: '走',
+        recovery: '恢',
+        long: '长',
+        baseline: '测',
+        before: '·',
+      };
+      const TITLE: Record<DayKind, string> = {
+        A: '力量 A',
+        B: '力量 B',
+        walk: '中等强度快走',
+        recovery: '恢复流程',
+        long: '长走和周回顾',
+        baseline: '测基线',
+        before: '计划还没开始',
+      };
+
+      const STRENGTH_VERSIONS: [Version, string][] = [
+        ['std', '标准'],
+        ['one', '1 组版'],
+        ['min', '保底版'],
+        ['five', '5 分钟'],
+        ['rest', '停训'],
+      ];
+      const WALK_VERSIONS: [Version, string][] = [
+        ['std', '标准'],
+        ['short', '时间不够'],
+        ['five', '5 分钟'],
+        ['rest', '停训'],
+      ];
+      const VERSIONS: Partial<Record<DayKind, [Version, string][]>> = {
+        A: STRENGTH_VERSIONS,
+        B: STRENGTH_VERSIONS,
+        walk: WALK_VERSIONS,
+        long: WALK_VERSIONS,
+        recovery: [
+          ['std', '标准'],
+          ['short', '时间不够'],
+          ['rest', '停训'],
+        ],
+      };
+
+      const LOG_LABEL: Record<Version, string> = {
+        std: '标准',
+        one: '1组版',
+        min: '保底',
+        five: '保底',
+        short: '1组版',
+        rest: '休息',
+      };
+
+      function versionOf(ymd: string, kind: DayKind): Version {
+        const list = VERSIONS[kind];
+        if (!list) return 'std';
+        const v = store.get(`wk-ver-${ymd}`) as Version | null;
+        return list.some(([id]) => id === v) ? (v as Version) : 'std';
+      }
+
+      // ---------- 状态（workout-state.ts） ----------
+      function levelOf(id: ExerciseId) {
+        const ex = EXERCISES[id];
+        const n = clamp(WORKOUT_STATE.exercises[id]?.level ?? 1, 1, ex.levels.length);
+        return { n, ...ex.levels[n - 1] };
+      }
+      const setsOf = (id: ExerciseId) => clamp(WORKOUT_STATE.exercises[id]?.sets ?? 1, 1, 3);
+
+      function templateOf(kind: DayKind): ExerciseId[] {
+        if (kind === 'A') return TEMPLATE_A;
+        return WORKOUT_STATE.bSwap ? TEMPLATE_B_SWAPPED : TEMPLATE_B;
+      }
+
+      function strengthMinutes(kind: DayKind): number {
+        const total = templateOf(kind).reduce((s, id) => s + setsOf(id), 0);
+        // 计划给出：每项 1 组≈19 分，每项 2 组≈29 分；中间按组数线性估算
+        return Math.round(19 + ((total - 6) * 10) / 6);
+      }
+
+      function minutesOf(kind: DayKind, v: Version, week: number): number | null {
+        const p = phaseIndex(week);
+        if (v === 'rest') return null;
+        switch (kind) {
+          case 'A':
+          case 'B':
+            return { std: strengthMinutes(kind), one: 16, min: 8, five: 5, short: 16, rest: 0 }[v];
+          case 'walk':
+            return v === 'std' ? WALK_MIN[p] + 4 : v === 'short' ? 10 : 5;
+          case 'long':
+            return (v === 'std' ? LONG_WALK_MIN[p] + 4 : v === 'short' ? 10 : 5) + 5;
+          case 'recovery':
+            return v === 'std' ? (p === 2 ? 20 : 10) : 5;
+          default:
+            return null;
+        }
+      }
+
+      // ---------- HTML 片段 ----------
+      function stepsHtml(steps: TimedStep[]): string {
+        return `<ol class="steps">${steps
+          .map(
+            (s) => `<li>
+              <div class="step-text"><span>${esc(s.label)}</span>${s.note ? `<small>${esc(s.note)}</small>` : ''}</div>
+              <button class="go" type="button" data-sec="${s.seconds}" data-label="${esc(s.label)}" aria-label="${esc(s.label)}，开始计时 ${mmss(s.seconds)}">${mmss(s.seconds)}</button>
+            </li>`,
+          )
+          .join('')}</ol>`;
+      }
+
+      function block(title: string, meta: string, body: string, extraClass = ''): string {
+        return `<section class="block ${extraClass}"><h2>${esc(title)}${meta ? ` <span class="meta">${esc(meta)}</span>` : ''}</h2>${body}</section>`;
+      }
+
+      const NUM = '①②③④⑤⑥';
+
+      function exerciseHtml(
+        id: ExerciseId,
+        idx: number,
+        opts: { sets: number; rest: number; week: number; ymd: string },
+      ): string {
+        const ex = EXERCISES[id];
+        const lv = levelOf(id);
+        const done = store.obj(`wk-sets-${opts.ymd}`);
+        const intensity = ex.main ? mainIntensity(opts.week) : ex.intensity;
+        const restText = opts.rest > 0 ? `休息 ${opts.rest} 秒` : '最后一项';
+        const setButtons = Array.from({ length: opts.sets }, (_, i) => {
+          const on = !!done[`${id}-${i}`];
+          return `<button class="set" type="button" data-ex="${id}" data-i="${i}" data-rest="${opts.rest}" aria-pressed="${on}">第 ${i + 1} 组</button>`;
+        }).join('');
+        const sw = ex.switchRest
+          ? `<button class="go go-small" type="button" data-sec="${ex.switchRest}" data-label="换边">换边 ${ex.switchRest} 秒</button>`
+          : '';
+        return `<li class="ex">
+          <div class="ex-head">
+            <span class="ex-no" aria-hidden="true">${NUM[idx]}</span>
+            <div class="ex-title">
+              <h3>${esc(ex.name)}</h3>
+              <p class="ex-level">L${lv.n} ${esc(lv.variant)}</p>
+            </div>
+          </div>
+          <p class="ex-dose"><strong>${esc(lv.dose)}</strong><span>× ${opts.sets} 组</span><span>${restText}</span>${intensity ? `<span>${esc(intensity)}</span>` : ''}</p>
+          <div class="sets">${setButtons}${sw}</div>
+          <details class="ex-more">
+            <summary>要点、常见错误、降阶</summary>
+            <dl>
+              <dt>要点</dt><dd>${esc(ex.cues)}</dd>
+              <dt>常见错误</dt><dd>${esc(ex.mistakes)}</dd>
+              <dt>降阶／替代</dt><dd>${esc(ex.regress)}</dd>
+              <dt>主要肌群</dt><dd>${esc(ex.muscles)}</dd>
+              ${ex.note ? `<dt>注意</dt><dd>${esc(ex.note)}</dd>` : ''}
+            </dl>
+          </details>
+        </li>`;
+      }
+
+      function restCard(): string {
+        return block(
+          '今天停训',
+          '',
+          '<p>完全休息，不用最低版抵任务。用于发烧、急性病、受伤、医嘱，或触发了下面的血压暂停线。日志记「休息」，不算漏练。</p>',
+        );
+      }
+
+      function strengthContent(kind: DayKind, info: DayInfo, v: Version): string {
+        if (v === 'rest') return restCard();
+        if (v === 'five') return block('只有 5 分钟', '', stepsHtml([{ label: '慢走', seconds: 300 }]) + '<p class="small">记「保底」，保住“不连漏三天”，不计入力量次数。</p>');
+
+        const tpl = templateOf(kind);
+        const week = info.week;
+        let html = '';
+
+        if ((week === 4 || week === 8 || week === 12) && info.dow === 1 && v !== 'min') {
+          html += `<p class="note note-info">本周固定检查：做深蹲、俯卧撑、死虫、侧桥时，各记 1 组的 RPE、动作质量、有无晃动或憋气。不做极限测试。</p>`;
+        }
+
+        if (v === 'min') {
+          html += block('热身', '2 分钟', stepsHtml([
+            { label: '原地踏步', seconds: 60 },
+            { label: '肩部绕环', seconds: 60 },
+          ]));
+          const picks: [number, number][] = [
+            [0, 90],
+            [1, 90],
+            [4, 0],
+          ];
+          html += block(
+            '保底 3 个动作',
+            '各 1 组',
+            `<ol class="ex-list">${picks
+              .map(([i, rest]) => exerciseHtml(tpl[i], i, { sets: 1, rest, week, ymd: info.ymd }))
+              .join('')}</ol>`,
+          );
+          html += block('收尾', '1 分钟', stepsHtml([{ label: '慢走', seconds: 60 }]) + '<p class="small">记「保底」，不计入力量次数、不作升级依据。</p>');
+          return html;
+        }
+
+        const isStd = v === 'std';
+        html += block(
+          '热身',
+          isStd ? '5 分钟，RPE 2–3' : '3 分钟',
+          stepsHtml(isStd ? WARMUP : WARMUP_SHORT),
+        );
+        html += block(
+          kind === 'A' ? '模板 A' : '模板 B',
+          isStd ? '' : '每项 1 组，次数和休息不变',
+          `<ol class="ex-list">${tpl
+            .map((id, i) =>
+              exerciseHtml(id, i, { sets: isStd ? setsOf(id) : 1, rest: EXERCISES[id].rest, week, ymd: info.ymd }),
+            )
+            .join('')}</ol>
+          <ul class="rules-inline">${STRENGTH_RULES.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>`,
+          'strength',
+        );
+        html += block('放松', isStd ? '3 分钟' : '2 分钟', stepsHtml(isStd ? COOLDOWN : COOLDOWN_SHORT) + `<p class="small">${esc(STRENGTH_DONE)}</p>`);
+        return html;
+      }
+
+      function walkContent(kind: DayKind, info: DayInfo, v: Version): string {
+        if (v === 'rest') return restCard();
+        const p = phaseIndex(info.week);
+        if (v === 'five') return block('只有 5 分钟', '', stepsHtml([{ label: '慢走', seconds: 300 }]));
+        if (v === 'short') {
+          return block('时间不够', '10 分钟', stepsHtml([{ label: '快走', seconds: 600, note: WALK_PACE }]) + '<p class="small">日志记「1组版」，备注实际分钟。</p>');
+        }
+        const main = kind === 'long' ? LONG_WALK_MIN[p] : WALK_MIN[p];
+        const steps: TimedStep[] = [
+          { label: '慢走', seconds: 120 },
+          {
+            label: kind === 'long' ? `中等强度长走 ${main} 分` : `中等强度快走 ${main} 分`,
+            seconds: main * 60,
+            note: kind === 'long' ? `可分两段。${WALK_PACE}` : WALK_PACE,
+          },
+          { label: '慢走', seconds: 120 },
+        ];
+        return block(kind === 'long' ? '长走' : '快走', `${main + 4} 分钟`, stepsHtml(steps) + '<p class="small">通勤步行单独记录，不计入计划内分钟。</p>');
+      }
+
+      function recoveryContent(info: DayInfo, v: Version): string {
+        if (v === 'rest') return restCard();
+        let html = '';
+        if (info.dow === 5 && info.week >= 1) {
+          html += `<div class="swap"><p>周六有安排？今天改做 A，周六做恢复（唯一的换日规则）。</p><button id="swap-on" class="btn" type="button">今天改做 A</button></div>`;
+        }
+        if (v === 'short') {
+          return html + block('恢复流程前 5 分钟', 'RPE≈2', stepsHtml(RECOVERY.slice(0, 2)) + '<p class="small">日志记「1组版」，备注实际分钟。</p>');
+        }
+        html += block('恢复流程', '10 分钟，RPE≈2', stepsHtml(RECOVERY) + '<p class="small">手腕不适时，猫牛式和向后坐髋改成站姿骨盆活动。拉伸只用于放松和活动度。</p>');
+        if (phaseIndex(info.week) === 2) {
+          html += block('再快走', '10 分钟', stepsHtml([{ label: '快走', seconds: 600, note: WALK_PACE }]));
+        }
+        return html;
+      }
+
+      function baselineContent(info: DayInfo): string {
+        let html = block(
+          '这周只测基线',
+          `${md(PLAN.baselineStart)}–10月25日`,
+          `<p>不做正式训练。早晚血压连续测 5–7 天，不够的天数在第 1 周补。第 1 周从 ${md(PLAN.start)}（周一）开始，第一天是力量 A。</p>`,
+        );
+        html += block(
+          '测量方法',
+          '',
+          `<dl class="measure">
+            <dt>血压</dt><dd>${esc(MEASURE.bp)}</dd>
+            <dt>腰围</dt><dd>${esc(MEASURE.waist)}</dd>
+            <dt>体重</dt><dd>${esc(MEASURE.weight)}</dd>
+            <dt>照片</dt><dd>${esc(MEASURE.photo)}</dd>
+          </dl>`,
+        );
+        html += block('想动一动', '可选', '<p>可以轻松散步，或者试做一遍热身熟悉动作。</p>' + stepsHtml(WARMUP));
+        return html;
+      }
+
+      // ---------- 今天别忘了 ----------
+      function todoItems(info: DayInfo): { id: string; text: string; link?: string }[] {
+        const items: { id: string; text: string; link?: string }[] = [];
+        const w = info.week;
+        if (info.kind === 'baseline') {
+          items.push({ id: 'bp-am', text: '早上测血压，连测 2 遍取平均' });
+          items.push({ id: 'bp-pm', text: '晚上睡前测血压，连测 2 遍取平均' });
+          items.push({ id: 'weight', text: '称体重（本周至少两次）' });
+          items.push({ id: 'waist', text: '量腰围（本周至少一次）' });
+          if (info.dow === 0) {
+            items.push({ id: 'photo', text: '拍第一组照片：正面、侧面、背面' });
+            items.push({ id: 'review', text: '把腰围、体重、血压填进〈周回顾〉W0', link: PLAN.notion.review });
+          }
+          return items;
+        }
+        if (w < 1) return items;
+        if (info.dow === 1 || info.dow === 3 || info.dow === 6) {
+          items.push({ id: 'weight', text: '早上称体重：起床排尿后、早餐前' });
+        }
+        if ((w === 4 || w === 8 || w === 12) && info.dow === 1) {
+          items.push({ id: 'check', text: '固定检查（周一漏了就放到本周第一次力量日）' });
+        }
+        if (info.dow === 0) {
+          items.push({ id: 'bp', text: '早晚各测一次血压' });
+          items.push({ id: 'waist', text: '早上量腰围' });
+          if (w === 4 || w === 8 || w === 12) items.push({ id: 'photo', text: '拍照：正面、侧面、背面' });
+          items.push({
+            id: 'review',
+            text: `周回顾 5 分钟：填腰围、血压，再看${WEEKLY_REVIEW.join('、')}`,
+            link: PLAN.notion.review,
+          });
+        }
+        return items;
+      }
+
+      function todoHtml(info: DayInfo): string {
+        const items = todoItems(info);
+        if (!items.length) return '';
+        const done = store.obj(`wk-todo-${info.ymd}`);
+        return block(
+          '今天别忘了',
+          '',
+          `<ul class="todo">${items
+            .map(
+              (t) => `<li><button class="todo-item" type="button" data-todo="${t.id}" aria-pressed="${!!done[t.id]}">${esc(t.text)}</button>${
+                t.link ? `<a class="todo-link" href="${t.link}">打开</a>` : ''
+              }</li>`,
+            )
+            .join('')}</ul>`,
+          'todo-block',
+        );
+      }
+
+      // ---------- 提示 ----------
+      function alertsHtml(info: DayInfo, kind: DayKind, swapped: boolean): string {
+        const notes: [string, string][] = [];
+        const w = info.week;
+        if (info.afterEnd) {
+          notes.push(['info', `12 周周期已在 ${md(PLAN.end)} 结束。星期结构不变，有效动作继续保留；下一周期在周日回顾里决定。`]);
+        } else if (w === 12) {
+          notes.push(['info', '第 12 周是复测周：不升级，做固定检查，决定下一周期。']);
+        }
+        if (swapped && info.dow === 5) {
+          notes.push(['info', '已对调：今天做 A，周六做恢复。日志里周五、周六两行都勾「对调」。<button id="swap-off" class="link-btn" type="button">取消对调</button>']);
+        }
+        if (swapped && info.dow === 6) {
+          notes.push(['info', 'A 已在周五做过，今天做恢复流程。']);
+        }
+        if ((kind === 'A' || kind === 'B') && w >= 1) {
+          const ids = templateOf(kind);
+          const beyond = ids.some((id) => levelOf(id).n > 1 || setsOf(id) > 1);
+          if (!WORKOUT_STATE.bpConfirmedNormal) {
+            notes.push(
+              beyond
+                ? ['warn', '血压还没确认正常，但状态里有动作超过了 L1 或 ×1。按规则应保持 L1、每项 ×1，请检查 workout-state.ts。']
+                : ['info', '血压还没确认正常：保持 L1、每项 ×1。'],
+            );
+          }
+          if (w <= 2 && ids.some((id) => setsOf(id) > 1)) {
+            notes.push(['warn', '第 1–2 周每项只做 1 组。']);
+          }
+          if (kind === 'B' && WORKOUT_STATE.bSwap && w < 5) {
+            notes.push(['warn', 'B1、B2 替换要从第 5 周起、满足条件后才做。']);
+          }
+        }
+        return notes.map(([t, h]) => `<p class="note note-${t}">${h}</p>`).join('');
+      }
+
+      // ---------- 日志 ----------
+      function logHtml(info: DayInfo, kind: DayKind, v: Version, swapped: boolean): string {
+        if (kind === 'before') return '';
+        if (kind === 'baseline') {
+          return `<p class="log">测量结果记在〈周回顾〉W0。<a class="btn" href="${PLAN.notion.review}">打开周回顾</a></p>`;
+        }
+        let text = `做完后在训练日志里选「${LOG_LABEL[v]}」`;
+        if ((kind === 'A' || kind === 'B') && (v === 'std' || v === 'one')) text += '，再选主项余力';
+        if (swapped) text += '，并勾「对调」';
+        return `<p class="log">${esc(text)}。<a class="btn" href="${PLAN.notion.log}">打开训练日志</a></p>`;
+      }
+
+      // ---------- 渲染 ----------
+      function render() {
+        const info = dayInfo(view, PLAN);
+        const { kind, swapped } = effective(info);
+        const v = versionOf(view, kind);
+        const glyphKind = v === 'rest' ? 'rest' : kind;
+        document.body.dataset.kind = glyphKind;
+
+        // 预览说明
+        const preview = $('preview');
+        if (today !== realToday) {
+          preview.hidden = false;
+          preview.textContent = `预览模式：按 ${formatCnDate(today)} 显示（真实的今天是 ${formatCnDate(realToday)}）。`;
+        } else {
+          preview.hidden = true;
+        }
+
+        // 头部
+        $('glyph').textContent = v === 'rest' ? '休' : GLYPH[kind];
+        $('hero-date').textContent = view === today ? `今天，${formatCnDate(view)}` : `查看 ${formatCnDate(view)}`;
+        $('hero-title').textContent = TITLE[kind];
+        let sub = '';
+        if (info.week >= 1) {
+          const p = phaseIndex(info.week);
+          sub = info.afterEnd ? `第 ${info.week} 周，12 周周期之后` : `第 ${info.week} 周，${PHASES[p].name}`;
+        } else if (kind === 'baseline') {
+          sub = '第 0 周，只测量，不做正式训练';
+        } else {
+          sub = `${md(PLAN.baselineStart)} 开始第 0 周（测基线），${md(PLAN.start)} 正式开始`;
+        }
+        $('hero-sub').textContent = sub;
+        const mins = info.week >= 1 ? minutesOf(kind, v, info.week) : null;
+        const timeEl = $('hero-time');
+        timeEl.hidden = mins === null;
+        if (mins !== null) timeEl.textContent = `约 ${mins} 分钟`;
+        $('back-today').hidden = view === today;
+
+        // 本周
+        const days = weekDates(view);
+        const lastInfo = dayInfo(days[6], PLAN);
+        const wkLabel =
+          lastInfo.week >= 1 ? `第 ${lastInfo.week} 周` : lastInfo.week === 0 ? '第 0 周（基线）' : '开始之前';
+        $('week').innerHTML = `
+          <div class="week-head">
+            <button class="wk-nav" type="button" data-step="-7" aria-label="上一周">上一周</button>
+            <span>${wkLabel}</span>
+            <button class="wk-nav" type="button" data-step="7" aria-label="下一周">下一周</button>
+          </div>
+          <div class="week-days">${days
+            .map((d) => {
+              const di = dayInfo(d, PLAN);
+              const ek = effective(di).kind;
+              const dv = versionOf(d, ek);
+              const g = dv === 'rest' ? '休' : GLYPH[ek];
+              const cls = ['day', `k-${dv === 'rest' ? 'rest' : ek}`, d === today ? 'is-today' : '', d === view ? 'is-view' : '']
+                .filter(Boolean)
+                .join(' ');
+              return `<button class="${cls}" type="button" data-day="${d}" aria-current="${d === view ? 'date' : 'false'}" aria-label="${formatCnDate(d)}，${TITLE[ek]}">
+                <span class="day-w">${WEEKDAY_CN[di.dow]}</span>
+                <span class="day-g">${g}</span>
+                <span class="day-d">${Number(d.slice(8))}</span>
+              </button>`;
+            })
+            .join('')}</div>`;
+
+        // 提示、版本、待办、内容、日志
+        $('alerts').innerHTML = alertsHtml(info, kind, swapped);
+
+        const versions = VERSIONS[kind];
+        const vEl = $('versions');
+        if (versions && info.week >= 1) {
+          vEl.hidden = false;
+          vEl.innerHTML = versions
+            .map(([id, label]) => `<button class="ver" type="button" data-ver="${id}" aria-pressed="${id === v}">${label}</button>`)
+            .join('');
+        } else {
+          vEl.hidden = true;
+          vEl.innerHTML = '';
+        }
+
+        $('todo').innerHTML = todoHtml(info);
+
+        let content = '';
+        if (kind === 'A' || kind === 'B') content = strengthContent(kind, info, v);
+        else if (kind === 'walk' || kind === 'long') content = walkContent(kind, info, v);
+        else if (kind === 'recovery') content = recoveryContent(info, v);
+        else if (kind === 'baseline') content = baselineContent(info);
+        else content = block('还没开始', '', `<p>计划从 ${md(PLAN.baselineStart)} 开始：第 0 周先测基线，${md(PLAN.start)} 起正式训练。口诀：${esc(PLAN.motto)}。</p>`);
+        $('content').innerHTML = content;
+
+        $('log').innerHTML = logHtml(info, kind, v, swapped);
+      }
+
+      // ---------- 计时器 ----------
+      let timerEnd = 0;
+      let timerTotal = 0;
+      let timerTick = 0;
+      let timerHide = 0;
+      let audio: AudioContext | null = null;
+
+      function beep() {
+        try {
+          if (!audio) return;
+          const t = audio.currentTime;
+          [0, 0.25, 0.5].forEach((off) => {
+            const o = audio!.createOscillator();
+            const g = audio!.createGain();
+            o.frequency.value = 880;
+            g.gain.setValueAtTime(0.0001, t + off);
+            g.gain.exponentialRampToValueAtTime(0.25, t + off + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.18);
+            o.connect(g).connect(audio!.destination);
+            o.start(t + off);
+            o.stop(t + off + 0.2);
+          });
+        } catch {
+          /* 没有声音也不影响计时 */
+        }
+      }
+
+      function updateTimer() {
+        const left = Math.max(0, timerEnd - Date.now());
+        $('timer-time').textContent = mmss(Math.ceil(left / 1000));
+        ($('timer-fill') as HTMLElement).style.transform = `scaleX(${timerTotal ? left / timerTotal : 0})`;
+        if (left <= 0) finishTimer();
+      }
+
+      function startTimer(sec: number, label: string) {
+        try {
+          const AC = window.AudioContext || (window as any).webkitAudioContext;
+          if (AC && !audio) audio = new AC();
+          audio?.resume?.();
+        } catch {
+          audio = null;
+        }
+        clearInterval(timerTick);
+        clearTimeout(timerHide);
+        timerTotal = sec * 1000;
+        timerEnd = Date.now() + timerTotal;
+        $('timer-label').textContent = label;
+        $('timer').hidden = false;
+        document.body.classList.add('timing');
+        document.body.classList.remove('timer-done');
+        updateTimer();
+        timerTick = window.setInterval(updateTimer, 250);
+      }
+
+      function finishTimer() {
+        clearInterval(timerTick);
+        $('timer-label').textContent = '时间到';
+        document.body.classList.add('timer-done');
+        try {
+          navigator.vibrate?.([200, 100, 200]);
+        } catch {
+          /* iOS 不支持振动 */
+        }
+        beep();
+        timerHide = window.setTimeout(stopTimer, 5000);
+      }
+
+      function stopTimer() {
+        clearInterval(timerTick);
+        clearTimeout(timerHide);
+        $('timer').hidden = true;
+        document.body.classList.remove('timing', 'timer-done');
+      }
+
+      // ---------- 屏幕常亮 ----------
+      let wakeWanted = false;
+      let wakeLock: any = null;
+      const wakeBtn = $('wake');
+
+      async function acquireWake() {
+        try {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            wakeLock = null;
+            wakeBtn.setAttribute('aria-pressed', String(wakeWanted && !!wakeLock));
+          });
+        } catch {
+          wakeLock = null;
+          wakeWanted = false;
+        }
+        wakeBtn.setAttribute('aria-pressed', String(!!wakeLock));
+      }
+
+      if ('wakeLock' in navigator) {
+        wakeBtn.hidden = false;
+        document.addEventListener('visibilitychange', () => {
+          if (wakeWanted && !wakeLock && document.visibilityState === 'visible') acquireWake();
+        });
+      }
+
+      // ---------- 交互 ----------
+      document.addEventListener('click', (e) => {
+        const t = (e.target as HTMLElement).closest('button');
+        if (!t) return;
+
+        if (t.id === 'wake') {
+          wakeWanted = !wakeWanted;
+          if (wakeWanted) acquireWake();
+          else {
+            wakeLock?.release?.();
+            wakeLock = null;
+            wakeBtn.setAttribute('aria-pressed', 'false');
+          }
+          return;
+        }
+        if (t.id === 'timer-add') {
+          if (document.body.classList.contains('timer-done')) return;
+          timerEnd += 15_000;
+          timerTotal += 15_000;
+          updateTimer();
+          return;
+        }
+        if (t.id === 'timer-stop') return stopTimer();
+        if (t.id === 'back-today') {
+          view = today;
+          return render();
+        }
+        if (t.id === 'swap-on') {
+          store.set(swapKey(addDays(view, 1)), '1');
+          return render();
+        }
+        if (t.id === 'swap-off') {
+          store.set(swapKey(addDays(view, 1)), null);
+          return render();
+        }
+
+        const ds = t.dataset;
+        if (ds.day) {
+          view = ds.day;
+          return render();
+        }
+        if (ds.step) {
+          view = addDays(view, Number(ds.step));
+          return render();
+        }
+        if (ds.ver) {
+          store.set(`wk-ver-${view}`, ds.ver === 'std' ? null : ds.ver);
+          return render();
+        }
+        if (ds.sec) {
+          return startTimer(Number(ds.sec), ds.label || '计时');
+        }
+        if (ds.ex && ds.i !== undefined) {
+          const key = `wk-sets-${view}`;
+          const done = store.obj(key);
+          const k = `${ds.ex}-${ds.i}`;
+          const on = !done[k];
+          if (on) done[k] = true;
+          else delete done[k];
+          store.set(key, JSON.stringify(done));
+          t.setAttribute('aria-pressed', String(on));
+          const rest = Number(ds.rest);
+          if (on && rest > 0) {
+            const name = EXERCISES[ds.ex as ExerciseId]?.name ?? '';
+            startTimer(rest, `${name}，休息`);
+          }
+          return;
+        }
+        if (ds.todo) {
+          const key = `wk-todo-${view}`;
+          const done = store.obj(key);
+          const on = !done[ds.todo];
+          if (on) done[ds.todo] = true;
+          else delete done[ds.todo];
+          store.set(key, JSON.stringify(done));
+          t.setAttribute('aria-pressed', String(on));
+        }
+      });
+
+      render();
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  @font-face {
+    font-family: 'Atkinson';
+    src: url('/fonts/atkinson-regular.woff') format('woff');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Atkinson';
+    src: url('/fonts/atkinson-bold.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --bg: #eef2f0;
+    --card: #ffffff;
+    --ink: #17211d;
+    --muted: #5d6a65;
+    --line: #dbe2df;
+    --c-A: #2c58d6;
+    --c-B: #7444cc;
+    --c-walk: #12805a;
+    --c-long: #0b6a6e;
+    --c-recovery: #a86a12;
+    --c-baseline: #4a5a86;
+    --c-rest: #6b7280;
+    --danger: #c0352a;
+    --warn-bg: #fff4e0;
+    --warn-ink: #7a4a00;
+    --k: var(--c-baseline);
+    --on-k: #ffffff;
+    --radius: 14px;
+    color-scheme: light dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111715;
+      --card: #1b2320;
+      --ink: #e5ece9;
+      --muted: #98a6a0;
+      --line: #2c3733;
+      --c-A: #7d9cff;
+      --c-B: #b48cff;
+      --c-walk: #4cc28d;
+      --c-long: #4cbfc3;
+      --c-recovery: #e2a54b;
+      --c-baseline: #9aaad6;
+      --c-rest: #a3abb7;
+      --danger: #ff7b6e;
+      --warn-bg: #3a2c12;
+      --warn-ink: #ffd394;
+      --on-k: #111715;
+    }
+  }
+
+  body[data-kind='A'] { --k: var(--c-A); }
+  body[data-kind='B'] { --k: var(--c-B); }
+  body[data-kind='walk'] { --k: var(--c-walk); }
+  body[data-kind='long'] { --k: var(--c-long); }
+  body[data-kind='recovery'] { --k: var(--c-recovery); }
+  body[data-kind='baseline'] { --k: var(--c-baseline); }
+  body[data-kind='before'],
+  body[data-kind='rest'] { --k: var(--c-rest); }
+
+  * { box-sizing: border-box; }
+
+  [hidden] { display: none !important; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a { color: var(--k); }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* 数字和大字形用博客的 Atkinson（易读性字体），中文交给系统字体 */
+  .glyph, .go, .set, .day-g, .ex-dose strong, #timer-time, .hero-time {
+    font-family: 'Atkinson', -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif;
+  }
+
+  :focus-visible { outline: 2px solid var(--k); outline-offset: 2px; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 0;
+    font-size: 14px;
+  }
+  .back { color: var(--muted); text-decoration: none; padding: 8px 0; }
+  .wake {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .wake[aria-pressed='true'] { background: var(--k); border-color: var(--k); color: var(--on-k); }
+
+  .wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 4px 16px calc(32px + env(safe-area-inset-bottom));
+  }
+  body.timing .wrap { padding-bottom: calc(124px + env(safe-area-inset-bottom)); }
+
+  /* ---- 头部：今天的类型用大字形表示 ---- */
+  .hero {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 0 16px;
+  }
+  .glyph {
+    font-size: 104px;
+    line-height: 0.9;
+    font-weight: 700;
+    color: var(--k);
+    min-width: 0.9em;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+  .hero-date { margin: 0; color: var(--muted); font-size: 14px; }
+  .hero h1 { margin: 2px 0 2px; font-size: 26px; line-height: 1.25; font-weight: 700; }
+  .hero-sub { margin: 0; color: var(--muted); font-size: 14px; }
+  .hero-time {
+    display: inline-block;
+    margin: 8px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--k);
+  }
+  .link-btn {
+    display: inline;
+    border: 0;
+    background: none;
+    padding: 0 0 0 8px;
+    color: var(--k);
+    text-decoration: underline;
+    font-size: 14px;
+  }
+  .hero .link-btn { display: block; padding: 6px 0 0; }
+
+  /* ---- 本周 ---- */
+  .week { margin-bottom: 12px; }
+  .week-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .wk-nav {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    padding: 6px 2px;
+    font-size: 13px;
+  }
+  .week-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 6px;
+  }
+  .day {
+    --dk: var(--c-rest);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    padding: 6px 0 5px;
+    min-height: 64px;
+    position: relative;
+  }
+  .day.k-A { --dk: var(--c-A); }
+  .day.k-B { --dk: var(--c-B); }
+  .day.k-walk { --dk: var(--c-walk); }
+  .day.k-long { --dk: var(--c-long); }
+  .day.k-recovery { --dk: var(--c-recovery); }
+  .day.k-baseline { --dk: var(--c-baseline); }
+  .day-w { font-size: 11px; color: var(--muted); }
+  .day-g { font-size: 20px; font-weight: 700; line-height: 1.15; color: var(--dk); }
+  .day-d { font-size: 11px; color: var(--muted); }
+  .day.is-today .day-d { color: var(--ink); font-weight: 700; }
+  .day.is-today::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  .day.is-view { background: color-mix(in srgb, var(--dk) 14%, transparent); }
+
+  /* ---- 版本切换 ---- */
+  .versions { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin: 0 0 12px; }
+  .ver {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 999px;
+    padding: 7px 4px;
+    font-size: 14px;
+    min-height: 40px;
+    white-space: nowrap;
+  }
+  .ver[aria-pressed='true'] { background: var(--k); border-color: var(--k); color: var(--on-k); font-weight: 700; }
+
+  /* ---- 区块 ---- */
+  .block {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px 16px 16px;
+    margin: 0 0 12px;
+  }
+  .block h2 { margin: 0 0 8px; font-size: 17px; line-height: 1.4; }
+  .block h2 .meta { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+  .block p { margin: 0 0 8px; }
+  .block > :last-child { margin-bottom: 0; }
+  .small { font-size: 13px; color: var(--muted); }
+
+  .note { border-radius: 10px; padding: 10px 12px; margin: 0 0 10px; font-size: 14px; }
+  .note-info { background: color-mix(in srgb, var(--k) 12%, var(--card)); }
+  .note-warn { background: var(--warn-bg); color: var(--warn-ink); }
+
+  /* 计时步骤 */
+  .steps { list-style: none; margin: 0 0 8px; padding: 0; }
+  .steps li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line);
+  }
+  .steps li:first-child { border-top: 0; }
+  .step-text { display: flex; flex-direction: column; min-width: 0; }
+  .step-text small { color: var(--muted); font-size: 13px; }
+  .go {
+    flex: none;
+    border: 1.5px solid var(--k);
+    background: transparent;
+    color: var(--k);
+    border-radius: 999px;
+    padding: 5px 14px;
+    min-height: 36px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .go-small { font-size: 13px; font-weight: 400; padding: 4px 10px; min-height: 40px; }
+
+  /* 力量动作 */
+  .ex-list { list-style: none; margin: 0; padding: 0; }
+  .ex { padding: 14px 0; border-top: 1px solid var(--line); }
+  .ex:first-child { border-top: 0; padding-top: 4px; }
+  .ex-head { display: flex; gap: 10px; align-items: baseline; }
+  .ex-no { font-size: 22px; color: var(--k); line-height: 1; flex: none; }
+  .ex-title h3 { margin: 0; font-size: 18px; line-height: 1.3; }
+  .ex-level { margin: 0; color: var(--muted); font-size: 14px; }
+  .ex-dose {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    align-items: baseline;
+    margin: 8px 0 10px 32px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .ex-dose strong { font-size: 20px; color: var(--ink); }
+  .sets { display: flex; flex-wrap: wrap; gap: 8px; margin-left: 32px; }
+  .set {
+    border: 1.5px solid var(--k);
+    background: transparent;
+    color: var(--k);
+    border-radius: 10px;
+    padding: 8px 16px;
+    min-height: 44px;
+    font-weight: 700;
+  }
+  .set[aria-pressed='true'] { background: var(--k); color: var(--on-k); }
+  .set[aria-pressed='true']::before { content: '✓ '; }
+  .ex-more { margin: 10px 0 0 32px; font-size: 14px; }
+  .ex-more summary { color: var(--muted); cursor: pointer; padding: 4px 0; }
+  .ex-more dl, .measure { margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+  .ex-more dt, .measure dt { color: var(--muted); white-space: nowrap; }
+  .ex-more dd, .measure dd { margin: 0; }
+  .measure { font-size: 14px; }
+  .rules-inline { margin: 10px 0 0; padding: 12px 0 0 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+  /* 待办 */
+  .todo { list-style: none; margin: 0; padding: 0; }
+  .todo li { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); }
+  .todo li:first-child { border-top: 0; }
+  .todo-item {
+    flex: 1;
+    text-align: left;
+    border: 0;
+    background: none;
+    padding: 10px 0 10px 30px;
+    position: relative;
+    min-height: 44px;
+  }
+  .todo-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--k);
+    border-radius: 5px;
+  }
+  .todo-item[aria-pressed='true'] { color: var(--muted); text-decoration: line-through; }
+  .todo-item[aria-pressed='true']::before { background: var(--k); }
+  .todo-item[aria-pressed='true']::after {
+    content: '✓';
+    position: absolute;
+    left: 4px;
+    top: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--on-k);
+  }
+  .todo-link { flex: none; font-size: 14px; }
+
+  /* 换日 */
+  .swap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin: 0 0 12px;
+    font-size: 14px;
+  }
+  .swap p { margin: 0; flex: 1 1 200px; }
+
+  .btn {
+    display: inline-block;
+    border: 0;
+    background: var(--k);
+    color: var(--on-k);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .log {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    margin: 4px 0 20px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  /* 安全 */
+  .safety { border: 1.5px solid color-mix(in srgb, var(--danger) 55%, transparent); }
+  .safety h2 { color: var(--danger); }
+  .safety-stop { font-weight: 700; }
+  .safety-emergency { color: var(--danger); font-weight: 700; }
+  .plain { margin: 0 0 8px; padding-left: 18px; font-size: 14px; }
+  .plain li { margin: 2px 0; }
+
+  /* 规则 */
+  .rules summary { cursor: pointer; list-style: none; }
+  .rules summary::-webkit-details-marker { display: none; }
+  .rules summary h2 { display: inline; }
+  .rules summary::after { content: '展开'; float: right; font-size: 13px; color: var(--muted); }
+  .rules[open] summary::after { content: '收起'; }
+  .rules h3 { font-size: 15px; margin: 14px 0 4px; }
+  .plain-ol { margin: 0; padding-left: 20px; font-size: 14px; }
+  .lights { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .light { padding-left: 18px; position: relative; margin: 3px 0; }
+  .light::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 10px; height: 10px; border-radius: 50%; }
+  .light-green::before { background: #2fa86b; }
+  .light-yellow::before { background: #e3b02b; }
+  .light-red::before { background: #d6463a; }
+
+  .foot { font-size: 14px; color: var(--muted); padding: 4px 2px 0; }
+  .foot a { margin-right: 10px; white-space: nowrap; }
+
+  /* ---- 计时条 ---- */
+  .timer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.08);
+    padding: 0 16px calc(12px + env(safe-area-inset-bottom));
+    z-index: 10;
+  }
+  .timer-track { height: 4px; margin: 0 -16px 10px; background: var(--line); }
+  .timer-track i {
+    display: block;
+    height: 100%;
+    background: var(--k);
+    transform-origin: left;
+    transition: transform 0.25s linear;
+  }
+  .timer-row { max-width: 528px; margin: 0 auto; display: flex; align-items: center; gap: 8px; }
+  .timer-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #timer-label { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #timer-time { font-size: 40px; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--k); }
+  .timer-row button {
+    border: 1px solid var(--line);
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 10px 12px;
+    min-height: 48px;
+    font-size: 14px;
+  }
+  body.timer-done .timer { background: var(--k); }
+  body.timer-done #timer-label,
+  body.timer-done #timer-time { color: var(--on-k); }
+
+  @media (min-width: 600px) {
+    .glyph { font-size: 128px; }
+    .hero h1 { font-size: 30px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .timer-track i { transition: none; }
+  }
+</style>
