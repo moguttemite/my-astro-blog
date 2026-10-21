@@ -9,7 +9,8 @@ import tailwindcss from '@tailwindcss/vite';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://mogutteru-oui.com',
-  integrations: [mdx(), sitemap()],
+  // /workout/ 是个人用的训练页（noindex），不进 sitemap
+  integrations: [mdx(), sitemap({ filter: (page) => !page.includes('/workout') })],
 
   // NOTE: 为何删掉 src/content.config.ts，改用 legacy？
   // 之前使用 Astro v5 新 Content Layer：在 src/content.config.ts 中用 glob()
